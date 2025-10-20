@@ -5,8 +5,31 @@
 // - When used behind Apache: use .htaccess to rewrite /api/* and /healthz to this file
 
 $ROOT = __DIR__;
-$ENABLED_VIDEO_PROVIDERS = array_filter(array_map('trim', explode(',', getenv('ENABLED_VIDEO_PROVIDERS') ?: 'mock')));
-$REPLICATE_API_TOKEN = getenv('REPLICATE_API_TOKEN') ?: (getenv('VIDEO_REPLICATE_API_TOKEN') ?: '');
+
+// Load local config.php if present (for non-Docker PHP installs)
+$CONFIG = [];
+$configFile = $ROOT . '/config.php';
+if (is_file($configFile)) {
+    $cfg = include $configFile;
+    if (is_array($cfg)) $CONFIG = $cfg;
+}
+
+// Determine enabled providers: env > config > default
+$providersEnv = getenv('ENABLED_VIDEO_PROVIDERS');
+if ($providersEnv === false || $providersEnv === '') {
+    $providersEnv = isset($CONFIG['ENABLED_VIDEO_PROVIDERS']) ? $CONFIG['ENABLED_VIDEO_PROVIDERS'] : 'mock';
+}
+$ENABLED_VIDEO_PROVIDERS = array_filter(array_map('trim', explode(',', $providersEnv ?: 'mock')));
+
+// Determine Replicate token: env vars > config > empty
+$replicateEnv = getenv('REPLICATE_API_TOKEN');
+if ($replicateEnv === false || $replicateEnv === '') {
+    $replicateEnv = getenv('VIDEO_REPLICATE_API_TOKEN');
+}
+if (($replicateEnv === false || $replicateEnv === '') && isset($CONFIG['REPLICATE_API_TOKEN'])) {
+    $replicateEnv = $CONFIG['REPLICATE_API_TOKEN'];
+}
+$REPLICATE_API_TOKEN = $replicateEnv ?: '';
 
 function send($code, $body, $headers = []) {
     http_response_code($code);

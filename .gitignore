@@ -10,6 +10,7 @@ yarn-error.log*
 
 # Runtime data
 /data/
+config.php
 
 # Build artifacts
 .dist/
