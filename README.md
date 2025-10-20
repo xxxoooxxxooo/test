@@ -61,7 +61,22 @@ AI 视频 API 接入
 - 如需接入第三方服务或企业后端，可在 main.js 中调用你的 API，或扩展 server.js。
 - 如需接更多视频供应商，可参考 server.js 中的 Replicate 适配器（replicateCreatePrediction/replicateGetPrediction），新增对应适配器与路由分支。
 
-部署
+部署（一键安装推荐）
+- 一键安装（Docker 优先）：
+  - 执行：bash ./install.sh
+  - 默认使用 Docker Compose 启动，访问 http://localhost:8080
+  - 环境变量（可选）：在安装前导出即可被 docker-compose 读取
+    - export ENABLED_VIDEO_PROVIDERS=mock,replicate
+    - export REPLICATE_API_TOKEN=你的令牌
+  - 常用命令：
+    - docker compose logs -f
+    - docker compose restart
+    - docker compose down
+
+- 无 Docker 时（自动降级）：
+  - install.sh 会尝试使用 Node.js 直接启动；若检测到 PM2，将以守护进程方式运行
+  - 默认监听 http://localhost:3000
+
 - 纯静态部署：将 index.html 与 assets 文件夹托管到 Vercel、Netlify、Cloudflare Pages、GitHub Pages 等平台。
 - 含后端 API 的部署：将整个仓库部署到支持 Node.js 的平台（如 Render、Railway、Fly.io 或自有服务器）。
 - 在宝塔面板（BT）部署：使用 PM2 管理器运行 server.js（或 ecosystem.config.js），设置 PORT/HOST（建议 PORT=3000，HOST=0.0.0.0），再用 Nginx 反代到 http://127.0.0.1:3000；健康检查 /healthz。详见 deploy/baota/README-BAOTA.md 与 deploy/baota/nginx.conf.example。
