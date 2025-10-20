@@ -32,6 +32,7 @@ Crevas AI 静态站点
 部署
 - 纯静态部署：将 index.html 与 assets 文件夹托管到 Vercel、Netlify、Cloudflare Pages、GitHub Pages 等平台。
 - 含表单 API 的部署：将整个仓库部署到支持 Node.js 的平台（如 Render、Railway、Fly.io 或自有服务器）。
+- 在宝塔面板（BT）部署：使用 PM2 管理器运行 server.js（或 ecosystem.config.js），设置 PORT/HOST（建议 PORT=3000，HOST=0.0.0.0），再用 Nginx 反代到 http://127.0.0.1:3000；健康检查 /healthz。详见 deploy/baota/README-BAOTA.md 与 deploy/baota/nginx.conf.example。
 
 许可与声明
 - 本模板仅用于演示与快速落地，页面文案、图形与图标均为占位内容，不代表任何第三方网站的实际素材或信息。
