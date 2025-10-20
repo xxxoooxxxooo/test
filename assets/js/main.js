@@ -27,4 +27,37 @@
   const year = new Date().getFullYear();
   const yearEl = $('#year');
   if (yearEl) yearEl.textContent = String(year);
+
+  // 联系表单
+  const form = $('#contact-form');
+  const statusEl = $('#contact-status');
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const payload = {
+        name: String(fd.get('name') || '').trim(),
+        email: String(fd.get('email') || '').trim(),
+        message: String(fd.get('message') || '').trim(),
+      };
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true;
+      if (statusEl) statusEl.textContent = '正在提交...';
+      try {
+        const res = await fetch('/api/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error('Request failed');
+        if (statusEl) statusEl.textContent = '已收到，我们会尽快联系你。';
+        (form).reset();
+      } catch (err) {
+        if (statusEl) statusEl.textContent = '提交失败，请稍后重试或使用邮件联系。';
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+        setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 4000);
+      }
+    });
+  }
 })();

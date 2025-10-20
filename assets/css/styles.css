@@ -30,6 +30,8 @@ body {
 img, svg { display: block; max-width: 100%; }
 a { color: var(--text); text-decoration: none; }
 
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
 .container {
   width: 100%;
   max-width: 1120px;
@@ -153,6 +155,27 @@ a { color: var(--text); text-decoration: none; }
 /* CTA */
 .cta .cta-inner { text-align: center; display: grid; gap: 10px; }
 
+/* Forms */
+.form { display: grid; gap: 12px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form label { display: grid; gap: 6px; }
+.form label span { font-size: 14px; color: var(--muted); font-weight: 600; }
+.form input, .form textarea {
+  width: 100%;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: var(--text);
+  outline: none;
+}
+.form input::placeholder, .form textarea::placeholder { color: #7f91b3; }
+.form input:focus, .form textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(110,168,255,0.15); }
+.form .full { grid-column: 1 / -1; }
+.form .form-actions { display: flex; align-items: center; gap: 10px; }
+
+.contact .section-header p { margin-top: 6px; }
+
 /* Footer */
 .site-footer { border-top: 1px solid var(--border); margin-top: 40px; }
 .footer-top { display: grid; grid-template-columns: 1.25fr 2fr; gap: 24px; padding: 28px 0; }
@@ -183,6 +206,7 @@ a { color: var(--text); text-decoration: none; }
   .headline { font-size: 34px; }
   .canvas { height: 260px; }
   .node:nth-child(3) { display: none; }
+  .form-row { grid-template-columns: 1fr; }
 }
 
 @media (min-width: 769px) {

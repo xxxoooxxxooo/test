@@ -39,6 +39,7 @@
           <li><a href="#solutions">解决方案</a></li>
           <li><a href="#pricing">价格</a></li>
           <li><a href="#faq">常见问题</a></li>
+          <li><a href="#contact">联系</a></li>
           <li class="divider" aria-hidden="true"></li>
           <li><a class="link-muted" href="#docs">文档</a></li>
           <li><a class="link-muted" href="#blog">博客</a></li>
@@ -291,6 +292,37 @@
           <a class="btn btn-primary btn-lg" href="#">免费注册</a>
           <a class="btn btn-ghost btn-lg" href="#contact">预约演示</a>
         </div>
+      </div>
+    </section>
+
+    <!-- Contact -->
+    <section id="contact" class="section contact">
+      <div class="container">
+        <header class="section-header">
+          <h2>联系我们</h2>
+          <p>填写表单获取演示或方案。也可邮件 hi@example.com</p>
+        </header>
+        <form id="contact-form" class="card form">
+          <div class="form-row">
+            <label>
+              <span>姓名</span>
+              <input type="text" name="name" required placeholder="你的名字" autocomplete="name" />
+            </label>
+            <label>
+              <span>邮箱</span>
+              <input type="email" name="email" required placeholder="you@example.com" autocomplete="email" />
+            </label>
+          </div>
+          <label class="full">
+            <span>需求与留言</span>
+            <textarea name="message" required rows="5" placeholder="简单描述你的业务场景与目标..."></textarea>
+          </label>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">提交</button>
+            <a class="btn btn-ghost" href="mailto:hi@example.com">邮件联系</a>
+            <span id="contact-status" class="muted" aria-live="polite"></span>
+          </div>
+        </form>
       </div>
     </section>
   </main>
