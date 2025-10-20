@@ -336,8 +336,8 @@
           let data = null;
           try { data = await res.json(); } catch (_) { data = null; }
           if (res.status === 401 || (data && (data.error === 'Unauthorized' || data.detail === 'Please login first'))) {
-            if (vStatus) vStatus.textContent = '请先登录后再使用在线生成接口';
-            location.hash = '#login';
+            if (vStatus) vStatus.textContent = '后端暂时不可用，请稍后重试或使用 Replicate 直连（开发演示）';
+            // 无登录流程
             return;
           }
           if (!res.ok || !data || !data.ok) {

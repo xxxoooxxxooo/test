@@ -305,8 +305,7 @@ if ($uri === '/api/video/providers') {
 
 if ($uri === '/api/video/generate') {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') send(405, ['ok' => false, 'error' => 'Method Not Allowed']);
-    // Require auth for generation via backend
-    require_login_or_401();
+    // Public generation endpoint（no auth）
     $body = read_json_body();
     if ($body === null) send(400, ['ok' => false, 'error' => 'Bad JSON']);
     $provider = trim((string)($body['provider'] ?? ''));
@@ -327,8 +326,7 @@ if ($uri === '/api/video/generate') {
 
 if (preg_match('#^/api/video/jobs/([^/]+)/([^/]+)$#', $uri, $m)) {
     if ($_SERVER['REQUEST_METHOD'] !== 'GET') send(405, ['ok' => false, 'error' => 'Method Not Allowed']);
-    // Require auth for job polling
-    require_login_or_401();
+    // Public job polling endpoint（no auth）
     $provider = $m[1];
     $id = $m[2];
     if (!in_array($provider, $ENABLED_VIDEO_PROVIDERS)) send(400, ['ok' => false, 'error' => 'Provider not enabled']);

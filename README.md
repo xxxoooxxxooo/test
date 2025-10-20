@@ -34,23 +34,16 @@ AI 视频 API 接入
 - 新增统一接口，支持对接多家 AI 视频模型供应商（默认内置一个 Mock 演示与可选的 Replicate 适配器）。
 - 前端演示入口：页面“AI 视频 API 接入”区块，可选择供应商并提交生成任务。
 
-登录与权限
-- 默认启用简单登录（基于会话 Cookie）。默认体验账号：demo@example.com / demo123
-- 登录后可调用后端在线生成接口（/api/video/generate 与 /api/video/jobs/...）。未登录将返回 401。
-- 可通过环境变量或 config.php 覆盖账号：ADMIN_EMAIL、ADMIN_PASSWORD
-- 纯静态模式下无法使用后端接口，可在页面填写 Replicate Token 走浏览器直连（仅用于开发演示）。
+无管理后台与用户中心
+- 本模板不包含管理后台或用户中心。
+- 默认不需要登录；后端接口公开用于演示（生产环境请自行加鉴权或网关保护）。
+- 纯静态模式下仍无法使用后端接口，可在页面填写 Replicate Token 走浏览器直连（仅用于开发演示，勿在生产暴露 Token）。
 
 后端环境变量
 - ENABLED_VIDEO_PROVIDERS: 启用的供应商，逗号分隔。默认 mock。可选：mock, replicate
 - REPLICATE_API_TOKEN 或 VIDEO_REPLICATE_API_TOKEN: Replicate 访问令牌（配置后启用 Replicate 提供的模型/部署）
-- ADMIN_EMAIL: 简单登录账号邮箱（默认 demo@example.com）
-- ADMIN_PASSWORD: 简单登录账号密码（默认 demo123）
 
 接口说明（简化）
-- Auth：
-  - POST /api/auth/login {email,password}
-  - GET /api/auth/me
-  - POST /api/auth/logout
 - GET /api/video/providers
   - 返回已启用的供应商列表及其能力/配置状态
 - POST /api/video/generate
@@ -62,10 +55,6 @@ AI 视频 API 接入
   - 轮询查询任务状态，直到 succeeded 或 failed
 
 使用示例（curl）
-- 登录：
-  curl -X POST http://localhost:3000/api/auth/login \
-       -H 'Content-Type: application/json' \
-       -d '{"email":"demo@example.com","password":"demo123"}'
 - 查看供应商：
   curl http://localhost:3000/api/video/providers
 - 使用 Mock 生成（演示）：
