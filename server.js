@@ -248,53 +248,64 @@ function handleContact(req, res) {
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
       'Access-Control-Max-Age': '86400',
     });
     return res.end();
   }
 
-  if (req.method !== 'POST') {
+  if (req.method === 'GET') {
+    const u = getSessionUser(req);
+    if (!u) return send(res, 401, { ok: false, error: 'Unauthorized', detail: 'Please login first' });
+    const dir = path.join(ROOT, 'data');
+    const file = path.join(dir, 'contacts.json');
+    let arr = [];
+    if (fs.existsSync(file)) {
+      try { arr = JSON.parse(fs.readFileSync(file, 'utf8') || '[]'); }
+      catch (_) { arr = []; }
+    }
+    return send(res, 200, { ok: true, items: arr });
+  } else if (req.method === 'POST') {
+    let raw = '';
+    req.on('data', (chunk) => { raw += chunk; if (raw.length > 1e6) req.destroy(); });
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(raw || '{}');
+        const name = String((data.name || '')).trim();
+        const email = String((data.email || '')).trim();
+        const message = String((data.message || '')).trim();
+        if (!name || !email || !message) {
+          return send(res, 400, { ok: false, error: 'Missing fields' });
+        }
+
+        const dir = path.join(ROOT, 'data');
+        const file = path.join(dir, 'contacts.json');
+        fs.mkdirSync(dir, { recursive: true });
+
+        let arr = [];
+        if (fs.existsSync(file)) {
+          try { arr = JSON.parse(fs.readFileSync(file, 'utf8') || '[]'); }
+          catch (_) { arr = []; }
+        }
+        arr.push({
+          name,
+          email,
+          message,
+          ts: new Date().toISOString(),
+          ip: getClientIp(req),
+          ua: req.headers['user-agent'] || '',
+        });
+        fs.writeFileSync(file, JSON.stringify(arr, null, 2));
+
+        return send(res, 200, { ok: true });
+      } catch (e) {
+        return send(res, 400, { ok: false, error: 'Bad JSON' });
+      }
+    });
+  } else {
     return send(res, 405, { ok: false, error: 'Method Not Allowed' });
   }
-
-  let raw = '';
-  req.on('data', (chunk) => { raw += chunk; if (raw.length > 1e6) req.destroy(); });
-  req.on('end', () => {
-    try {
-      const data = JSON.parse(raw || '{}');
-      const name = String((data.name || '')).trim();
-      const email = String((data.email || '')).trim();
-      const message = String((data.message || '')).trim();
-      if (!name || !email || !message) {
-        return send(res, 400, { ok: false, error: 'Missing fields' });
-      }
-
-      const dir = path.join(ROOT, 'data');
-      const file = path.join(dir, 'contacts.json');
-      fs.mkdirSync(dir, { recursive: true });
-
-      let arr = [];
-      if (fs.existsSync(file)) {
-        try { arr = JSON.parse(fs.readFileSync(file, 'utf8') || '[]'); }
-        catch (_) { arr = []; }
-      }
-      arr.push({
-        name,
-        email,
-        message,
-        ts: new Date().toISOString(),
-        ip: getClientIp(req),
-        ua: req.headers['user-agent'] || '',
-      });
-      fs.writeFileSync(file, JSON.stringify(arr, null, 2));
-
-      return send(res, 200, { ok: true });
-    } catch (e) {
-      return send(res, 400, { ok: false, error: 'Bad JSON' });
-    }
-  });
 }
 
 function handleAuthMe(req, res) {
@@ -455,6 +466,28 @@ const server = http.createServer((req, res) => {
   }
   if (pathname === '/api/video/generate') {
     return handleVideoGenerate(req, res);
+  }
+  if (pathname === '/api/video/jobs') {
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Max-Age': '86400',
+      });
+      return res.end();
+    }
+    if (req.method !== 'GET') return send(res, 405, { ok: false, error: 'Method Not Allowed' });
+    const u = getSessionUser(req);
+    if (!u) return send(res, 401, { ok: false, error: 'Unauthorized', detail: 'Please login first' });
+    const jobs = [];
+    if (ENABLED_VIDEO_PROVIDERS.includes('mock')) {
+      for (const [id, j] of mockJobs.entries()) {
+        jobs.push({ id: j.id || id, status: j.status || '', provider: 'mock', created_at: j.created_at || null, completed_at: j.completed_at || null });
+      }
+      jobs.sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
+    }
+    return send(res, 200, { ok: true, jobs });
   }
   const jobsMatch = pathname.match(/^\/api\/video\/jobs\/([^/]+)\/([^/]+)$/);
   if (jobsMatch) {
