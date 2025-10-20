@@ -70,12 +70,15 @@
   const vDeployment = $('#video-deployment');
   const vVersion = $('#video-version');
   const vInputJson = $('#video-input-json');
+  const vRepToken = $('#replicate-token');
+  let hasBackend = false;
 
   async function loadProviders() {
     if (!vProvider) return;
     try {
       const res = await fetch('/api/video/providers');
       const data = await res.json();
+      hasBackend = true;
       const list = (data && data.providers) || [];
       vProvider.innerHTML = '';
       if (!list.length) {
@@ -92,7 +95,12 @@
         vProvider.appendChild(opt);
       }
     } catch (e) {
+      hasBackend = false;
       vProvider.innerHTML = '';
+      const optR = document.createElement('option');
+      optR.value = 'replicate';
+      optR.textContent = 'Replicate（直连开发模式）';
+      vProvider.appendChild(optR);
       const opt = document.createElement('option');
       opt.value = 'mock';
       opt.textContent = 'Mock Provider (演示)';
@@ -185,21 +193,101 @@
       if (vStatus) vStatus.textContent = '正在创建任务...';
       if (vOutput) vOutput.innerHTML = '<span class="muted">等待结果...</span>';
       try {
-        const res = await fetch('/api/video/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.ok) throw new Error(data.error || '请求失败');
-        if (vStatus) vStatus.textContent = '任务已创建，正在生成...';
-        const result = await pollJob(provider, data.id, (d) => {
-          if (!d) return;
-          if (vStatus) vStatus.textContent = `状态：${d.status}`;
-        });
-        renderOutput(result);
-        if (vStatus && result && result.status === 'succeeded') vStatus.textContent = '生成完成';
-        else if (vStatus && result && result.status === 'failed') vStatus.textContent = '生成失败';
+        let usedDirect = false;
+        let jobId = '';
+        if (provider === 'replicate' && vRepToken && vRepToken.value.trim() && !hasBackend) {
+          usedDirect = true;
+          if (vStatus) vStatus.textContent = '使用浏览器直连 Replicate 创建任务...';
+          const token = vRepToken.value.trim();
+          const createUrl = (payload.deployment && payload.deployment.trim())
+            ? `https://api.replicate.com/v1/deployments/${encodeURIComponent(payload.deployment.trim())}/predictions`
+            : 'https://api.replicate.com/v1/predictions';
+          const body = payload.deployment ? { input } : { version: payload.version, input };
+          const r = await fetch(createUrl, {
+            method: 'POST',
+            headers: { 'Authorization': 'Token ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          const rj = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error((rj && (rj.detail || rj.error)) || 'Replicate 请求失败');
+          jobId = rj.id;
+          if (vStatus) vStatus.textContent = '任务已创建，正在生成...';
+          // 轮询 Replicate 预测状态
+          let result = null;
+          for (let i = 0; i < 30; i++) {
+            await new Promise(r => setTimeout(r, 1200));
+            const pr = await fetch(`https://api.replicate.com/v1/predictions/${encodeURIComponent(jobId)}`, {
+              headers: { 'Authorization': 'Token ' + token }
+            });
+            const pj = await pr.json().catch(() => null);
+            if (!pj) break;
+            const st = pj.status;
+            if (vStatus) vStatus.textContent = `状态：${st}`;
+            if (st === 'succeeded' || st === 'failed' || st === 'canceled') {
+              result = { status: st === 'succeeded' ? 'succeeded' : 'failed', output: pj.output || null, raw: pj };
+              break;
+            }
+          }
+          renderOutput(result);
+          if (vStatus && result && result.status === 'succeeded') vStatus.textContent = '生成完成';
+          else if (vStatus && result && result.status === 'failed') vStatus.textContent = '生成失败';
+        } else {
+          const res = await fetch('/api/video/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.ok) {
+            const msg = (data && (data.error || (data.detail && (data.detail.error || data.detail.detail)))) || '请求失败';
+            if (provider === 'replicate' && vRepToken && vRepToken.value.trim()) {
+              if (vStatus) vStatus.textContent = '后端不可用或未配置，切换为浏览器直连...';
+              const token = vRepToken.value.trim();
+              const createUrl = (payload.deployment && payload.deployment.trim())
+                ? `https://api.replicate.com/v1/deployments/${encodeURIComponent(payload.deployment.trim())}/predictions`
+                : 'https://api.replicate.com/v1/predictions';
+              const body = payload.deployment ? { input } : { version: payload.version, input };
+              const r = await fetch(createUrl, {
+                method: 'POST',
+                headers: { 'Authorization': 'Token ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+              });
+              const rj = await r.json().catch(() => ({}));
+              if (!r.ok) throw new Error((rj && (rj.detail || rj.error)) || 'Replicate 请求失败');
+              jobId = rj.id;
+              if (vStatus) vStatus.textContent = '任务已创建，正在生成...';
+              let result = null;
+              for (let i = 0; i < 30; i++) {
+                await new Promise(r => setTimeout(r, 1200));
+                const pr = await fetch(`https://api.replicate.com/v1/predictions/${encodeURIComponent(jobId)}`, {
+                  headers: { 'Authorization': 'Token ' + token }
+                });
+                const pj = await pr.json().catch(() => null);
+                if (!pj) break;
+                const st = pj.status;
+                if (vStatus) vStatus.textContent = `状态：${st}`;
+                if (st === 'succeeded' || st === 'failed' || st === 'canceled') {
+                  result = { status: st === 'succeeded' ? 'succeeded' : 'failed', output: pj.output || null, raw: pj };
+                  break;
+                }
+              }
+              renderOutput(result);
+              if (vStatus && result && result.status === 'succeeded') vStatus.textContent = '生成完成';
+              else if (vStatus && result && result.status === 'failed') vStatus.textContent = '生成失败';
+            } else {
+              throw new Error(msg);
+            }
+          } else {
+            if (vStatus) vStatus.textContent = '任务已创建，正在生成...';
+            const result = await pollJob(provider, data.id, (d) => {
+              if (!d) return;
+              if (vStatus) vStatus.textContent = `状态：${d.status}`;
+            });
+            renderOutput(result);
+            if (vStatus && result && result.status === 'succeeded') vStatus.textContent = '生成完成';
+            else if (vStatus && result && result.status === 'failed') vStatus.textContent = '生成失败';
+          }
+        }
       } catch (err) {
         if (vStatus) vStatus.textContent = '创建任务失败：' + (err && err.message ? err.message : '');
       } finally {
