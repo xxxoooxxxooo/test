@@ -37,6 +37,7 @@
         <ul id="primary-menu" class="menu">
           <li><a href="#features">产品</a></li>
           <li><a href="#solutions">解决方案</a></li>
+          <li><a href="#video">AI 视频</a></li>
           <li><a href="#pricing">价格</a></li>
           <li><a href="#faq">常见问题</a></li>
           <li><a href="#contact">联系</a></li>
@@ -279,6 +280,54 @@
             <summary class="question">计费方式如何？</summary>
             <div class="answer">采用订阅 + 按量计费的混合模式，按需弹性扩容，确保成本可控。</div>
           </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- Video -->
+    <section id="video" class="section video">
+      <div class="container">
+        <header class="section-header">
+          <h2>AI 视频 API 接入</h2>
+          <p>统一接入多家 AI 视频模型供应商，快速落地文生视频/图生视频能力。</p>
+        </header>
+        <div class="grid">
+          <form id="video-form" class="card form">
+            <div class="form-row">
+              <label>
+                <span>供应商</span>
+                <select id="video-provider" required>
+                  <option value="" disabled selected>加载中...</option>
+                </select>
+              </label>
+              <label>
+                <span>(可选) Replicate 部署</span>
+                <input type="text" id="video-deployment" placeholder="owner/name，例如: your-org/your-deployment" />
+              </label>
+            </div>
+            <div class="form-row">
+              <label>
+                <span>(可选) Replicate 版本</span>
+                <input type="text" id="video-version" placeholder="模型版本 ID，例如: 7b20f..." />
+              </label>
+              <span></span>
+            </div>
+            <label class="full">
+              <span>生成提示词</span>
+              <textarea id="video-prompt" rows="3" placeholder="描述你想生成的视频内容... 例如：一只在宇宙中漂浮的猫，赛博朋克风格" required></textarea>
+            </label>
+            <label class="full">
+              <span>(可选) 高级输入 JSON（将直接传给供应商接口的 input 字段）</span>
+              <textarea id="video-input-json" rows="4" placeholder='例如：{"num_frames": 24, "aspect_ratio": "16:9"}'></textarea>
+            </label>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">生成视频</button>
+              <span id="video-status" class="muted" aria-live="polite"></span>
+            </div>
+          </form>
+          <div id="video-output" class="card" style="min-height: 80px; display: grid; align-content: center; padding: 14px;">
+            <span class="muted">生成结果将在这里展示。</span>
+          </div>
         </div>
       </div>
     </section>
