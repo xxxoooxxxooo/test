@@ -53,13 +53,17 @@ AI 视频 API 接入
   - POST /api/auth/logout
 - GET /api/video/providers
   - 返回已启用的供应商列表及其能力/配置状态
-- POST /api/video/generate
+- POST /api/video/generate [auth]
   - 通用参数：{"provider": "mock"|"replicate", ...}
   - 当 provider=mock：{"prompt": "...", "options": {...}}（演示用途，2-3 秒返回成功状态）
   - 当 provider=replicate：{"deployment": "owner/name" 可选, "version": "模型版本ID" 可选, "input": {"prompt": "...", 其他模型参数}}
     - deployment 与 version 二选一；推荐使用 deployment（Replicate 的部署名称）
-- GET /api/video/jobs/:provider/:id
+- GET /api/video/jobs [auth]
+  - 列出最近生成的 Mock 任务（演示）
+- GET /api/video/jobs/:provider/:id [auth]
   - 轮询查询任务状态，直到 succeeded 或 failed
+- GET /api/contact [auth]
+  - 列出联系表单提交列表（本地 data/contacts.json）
 
 使用示例（curl）
 - 登录：

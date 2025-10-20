@@ -41,6 +41,8 @@
           <li><a href="#pricing">价格</a></li>
           <li><a href="#faq">常见问题</a></li>
           <li><a href="#contact">联系</a></li>
+          <li><a href="#login">用户中心</a></li>
+          <li><a href="#admin">管理后台</a></li>
           <li class="divider" aria-hidden="true"></li>
           <li><a class="link-muted" href="#docs">文档</a></li>
           <li><a class="link-muted" href="#blog">博客</a></li>
@@ -288,7 +290,7 @@
     <section id="login" class="section login">
       <div class="container">
         <header class="section-header">
-          <h2>登录</h2>
+          <h2>用户中心</h2>
           <p>登录后即可在线使用后端接口生成 AI 视频。默认体验账号：<code>demo@example.com</code> / <code>demo123</code></p>
         </header>
         <form id="login-form" class="card form">
@@ -360,6 +362,32 @@
           <div id="video-output" class="card" style="min-height: 80px; display: grid; align-content: center; padding: 14px;">
             <span class="muted">生成结果将在这里展示。</span>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Admin -->
+    <section id="admin" class="section admin">
+      <div class="container">
+        <header class="section-header">
+          <h2>管理后台</h2>
+          <p class="muted">需要登录后查看数据。</p>
+        </header>
+        <div class="grid grid-3">
+          <article class="card">
+            <h3>联系表单</h3>
+            <p class="muted">最近提交</p>
+            <div id="admin-contacts" class="muted">加载中...</div>
+          </article>
+          <article class="card">
+            <h3>视频任务</h3>
+            <p class="muted">Mock 任务（演示）</p>
+            <div id="admin-jobs" class="muted">加载中...</div>
+          </article>
+          <article class="card">
+            <h3>供应商状态</h3>
+            <div id="admin-providers" class="muted">加载中...</div>
+          </article>
         </div>
       </div>
     </section>

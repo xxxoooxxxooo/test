@@ -198,6 +198,30 @@ function get_mock_job_status($root, $id) {
     return $job;
 }
 
+function list_mock_jobs($root) {
+    $dir = $root . '/data/mockjobs';
+    if (!is_dir($dir)) return [];
+    $files = glob($dir . '/*.json');
+    if ($files === false) $files = [];
+    $jobs = [];
+    foreach ($files as $f) {
+        $j = json_decode(@file_get_contents($f), true);
+        if (is_array($j)) {
+            $jobs[] = [
+                'id' => $j['id'] ?? basename($f, '.json'),
+                'status' => $j['status'] ?? '',
+                'provider' => 'mock',
+                'created_at' => $j['created_at'] ?? null,
+                'completed_at' => $j['completed_at'] ?? null,
+            ];
+        }
+    }
+    usort($jobs, function ($a, $b) {
+        return strcmp($a['id'] ?? '', $b['id'] ?? '');
+    });
+    return $jobs;
+}
+
 function current_user() {
     if (!empty($_SESSION['user']) && isset($_SESSION['user']['email'])) {
         return [ 'email' => $_SESSION['user']['email'] ];
@@ -271,31 +295,44 @@ if ($uri === '/api/auth/logout') {
 }
 
 if ($uri === '/api/contact') {
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') send(405, ['ok' => false, 'error' => 'Method Not Allowed']);
-    $data = read_json_body();
-    if ($data === null) send(400, ['ok' => false, 'error' => 'Bad JSON']);
-    $name = trim((string)($data['name'] ?? ''));
-    $email = trim((string)($data['email'] ?? ''));
-    $message = trim((string)($data['message'] ?? ''));
-    if ($name === '' || $email === '' || $message === '') send(400, ['ok' => false, 'error' => 'Missing fields']);
-    $dir = $ROOT . '/data';
-    if (!is_dir($dir)) @mkdir($dir, 0777, true);
-    $file = $dir . '/contacts.json';
-    $arr = [];
-    if (is_file($file)) {
-      $prev = json_decode(file_get_contents($file), true);
-      if (is_array($prev)) $arr = $prev;
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $data = read_json_body();
+        if ($data === null) send(400, ['ok' => false, 'error' => 'Bad JSON']);
+        $name = trim((string)($data['name'] ?? ''));
+        $email = trim((string)($data['email'] ?? ''));
+        $message = trim((string)($data['message'] ?? ''));
+        if ($name === '' || $email === '' || $message === '') send(400, ['ok' => false, 'error' => 'Missing fields']);
+        $dir = $ROOT . '/data';
+        if (!is_dir($dir)) @mkdir($dir, 0777, true);
+        $file = $dir . '/contacts.json';
+        $arr = [];
+        if (is_file($file)) {
+          $prev = json_decode(file_get_contents($file), true);
+          if (is_array($prev)) $arr = $prev;
+        }
+        $arr[] = [
+            'name' => $name,
+            'email' => $email,
+            'message' => $message,
+            'ts' => gmdate('c'),
+            'ip' => get_client_ip(),
+            'ua' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+        ];
+        file_put_contents($file, json_encode($arr, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+        send(200, ['ok' => true]);
+    } else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        // List contacts (admin)
+        require_login_or_401();
+        $file = $ROOT . '/data/contacts.json';
+        $arr = [];
+        if (is_file($file)) {
+            $prev = json_decode(file_get_contents($file), true);
+            if (is_array($prev)) $arr = $prev;
+        }
+        send(200, ['ok' => true, 'items' => $arr]);
+    } else {
+        send(405, ['ok' => false, 'error' => 'Method Not Allowed']);
     }
-    $arr[] = [
-        'name' => $name,
-        'email' => $email,
-        'message' => $message,
-        'ts' => gmdate('c'),
-        'ip' => get_client_ip(),
-        'ua' => $_SERVER['HTTP_USER_AGENT'] ?? '',
-    ];
-    file_put_contents($file, json_encode($arr, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
-    send(200, ['ok' => true]);
 }
 
 if ($uri === '/api/video/providers') {
@@ -323,6 +360,16 @@ if ($uri === '/api/video/generate') {
         send(200, ['ok' => true, 'provider' => 'replicate', 'id' => $id, 'status' => $st, 'raw' => $data]);
     }
     send(400, ['ok' => false, 'error' => 'Unknown provider']);
+}
+
+if ($uri === '/api/video/jobs') {
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') send(405, ['ok' => false, 'error' => 'Method Not Allowed']);
+    require_login_or_401();
+    $jobs = [];
+    if (in_array('mock', $ENABLED_VIDEO_PROVIDERS)) {
+        $jobs = list_mock_jobs($ROOT);
+    }
+    send(200, ['ok' => true, 'jobs' => $jobs]);
 }
 
 if (preg_match('#^/api/video/jobs/([^/]+)/([^/]+)$#', $uri, $m)) {
