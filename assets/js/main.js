@@ -61,6 +61,102 @@
     });
   }
 
+  // 登录（简单会话）
+  const loginForm = $('#login-form');
+  const loginStatus = $('#login-status');
+  const loginEmail = $('#login-email');
+  const loginPassword = $('#login-password');
+  const loginCta = $('#login-cta');
+  const logoutBtn = $('#logout-btn');
+  let authUser = null;
+
+  async function refreshAuthUI() {
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+      if (!res.ok) throw new Error('auth check failed');
+      const data = await res.json().catch(() => ({}));
+      authUser = data && data.authenticated ? (data.user || null) : null;
+    } catch (_) {
+      authUser = null;
+    }
+    if (loginCta) {
+      if (authUser) {
+        loginCta.textContent = '退出';
+        loginCta.setAttribute('href', '#');
+        loginCta.dataset.loggedIn = '1';
+      } else {
+        loginCta.textContent = '登录';
+        loginCta.setAttribute('href', '#login');
+        delete loginCta.dataset.loggedIn;
+      }
+    }
+    if (logoutBtn) logoutBtn.style.display = authUser ? '' : 'none';
+    if (loginForm && authUser) {
+      // 填充邮箱并清空密码
+      if (loginEmail) loginEmail.value = authUser.email || '';
+      if (loginPassword) loginPassword.value = '';
+    }
+  }
+
+  if (loginForm) {
+    // 初始化
+    refreshAuthUI();
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = loginEmail ? loginEmail.value.trim() : '';
+      const password = loginPassword ? loginPassword.value : '';
+      if (!email || !password) {
+        if (loginStatus) loginStatus.textContent = '请输入邮箱和密码';
+        return;
+      }
+      const btn = loginForm.querySelector('button[type="submit"]');
+      if (btn) btn.disabled = true;
+      if (loginStatus) loginStatus.textContent = '正在登录...';
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+          credentials: 'same-origin',
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) throw new Error((data && data.error) || '登录失败');
+        authUser = data.user || { email };
+        if (loginStatus) loginStatus.textContent = '登录成功';
+        refreshAuthUI();
+        // 跳转到视频区块
+        location.hash = '#video';
+      } catch (err) {
+        if (loginStatus) loginStatus.textContent = '登录失败：' + (err && err.message ? err.message : '');
+      } finally {
+        if (btn) btn.disabled = false;
+        setTimeout(() => { if (loginStatus) loginStatus.textContent = ''; }, 4000);
+      }
+    });
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+      try {
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+      } catch (_) { /* ignore */ }
+      authUser = null;
+      refreshAuthUI();
+    });
+  }
+
+  if (loginCta) {
+    loginCta.addEventListener('click', async (e) => {
+      if (loginCta.dataset.loggedIn === '1') {
+        e.preventDefault();
+        try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' }); } catch (_) {}
+        authUser = null;
+        refreshAuthUI();
+      }
+    });
+  }
+
   // AI 视频 API 演示
   const vForm = $('#video-form');
   const vStatus = $('#video-status');
@@ -237,8 +333,14 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
           });
-          const data = await res.json();
-          if (!res.ok || !data.ok) {
+          let data = null;
+          try { data = await res.json(); } catch (_) { data = null; }
+          if (res.status === 401 || (data && (data.error === 'Unauthorized' || data.detail === 'Please login first'))) {
+            if (vStatus) vStatus.textContent = '请先登录后再使用在线生成接口';
+            location.hash = '#login';
+            return;
+          }
+          if (!res.ok || !data || !data.ok) {
             const msg = (data && (data.error || (data.detail && (data.detail.error || data.detail.detail)))) || '请求失败';
             if (provider === 'replicate' && vRepToken && vRepToken.value.trim()) {
               if (vStatus) vStatus.textContent = '后端不可用或未配置，切换为浏览器直连...';

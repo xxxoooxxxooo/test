@@ -6,6 +6,18 @@
 
 $ROOT = __DIR__;
 
+// Start session for simple auth
+if (session_status() === PHP_SESSION_NONE) {
+    // Ensure cookies are scoped to the whole site
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
+
 // Load local config.php if present (for non-Docker PHP installs)
 $CONFIG = [];
 $configFile = $ROOT . '/config.php';
@@ -30,6 +42,16 @@ if (($replicateEnv === false || $replicateEnv === '') && isset($CONFIG['REPLICAT
     $replicateEnv = $CONFIG['REPLICATE_API_TOKEN'];
 }
 $REPLICATE_API_TOKEN = $replicateEnv ?: '';
+
+// Demo auth credentials: env > config > defaults
+$ADMIN_EMAIL = getenv('ADMIN_EMAIL');
+if ($ADMIN_EMAIL === false || $ADMIN_EMAIL === '') {
+    $ADMIN_EMAIL = isset($CONFIG['ADMIN_EMAIL']) ? $CONFIG['ADMIN_EMAIL'] : 'demo@example.com';
+}
+$ADMIN_PASSWORD = getenv('ADMIN_PASSWORD');
+if ($ADMIN_PASSWORD === false || $ADMIN_PASSWORD === '') {
+    $ADMIN_PASSWORD = isset($CONFIG['ADMIN_PASSWORD']) ? $CONFIG['ADMIN_PASSWORD'] : 'demo123';
+}
 
 function send($code, $body, $headers = []) {
     http_response_code($code);
@@ -176,6 +198,21 @@ function get_mock_job_status($root, $id) {
     return $job;
 }
 
+function current_user() {
+    if (!empty($_SESSION['user']) && isset($_SESSION['user']['email'])) {
+        return [ 'email' => $_SESSION['user']['email'] ];
+    }
+    return null;
+}
+
+function require_login_or_401() {
+    $u = current_user();
+    if ($u === null) {
+        send(401, ['ok' => false, 'error' => 'Unauthorized', 'detail' => 'Please login first']);
+    }
+    return $u;
+}
+
 // Handle CORS preflight for API endpoints
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     header('Access-Control-Allow-Origin: *');
@@ -198,6 +235,38 @@ if (PHP_SAPI === 'cli-server') {
 
 // API routes
 if ($uri === '/healthz' || $uri === '/api/healthz' || $uri === '/api/health') {
+    send(200, ['ok' => true]);
+}
+
+// Auth routes
+if ($uri === '/api/auth/me') {
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') send(405, ['ok' => false, 'error' => 'Method Not Allowed']);
+    $u = current_user();
+    send(200, ['ok' => true, 'authenticated' => $u !== null, 'user' => $u]);
+}
+
+if ($uri === '/api/auth/login') {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') send(405, ['ok' => false, 'error' => 'Method Not Allowed']);
+    $data = read_json_body();
+    if ($data === null) send(400, ['ok' => false, 'error' => 'Bad JSON']);
+    $email = trim((string)($data['email'] ?? ''));
+    $password = (string)($data['password'] ?? '');
+    if ($email === '' || $password === '') send(400, ['ok' => false, 'error' => 'Missing email or password']);
+    if (strcasecmp($email, $GLOBALS['ADMIN_EMAIL']) === 0 && hash_equals($GLOBALS['ADMIN_PASSWORD'], $password)) {
+        $_SESSION['user'] = [ 'email' => $email, 'login_at' => gmdate('c') ];
+        send(200, ['ok' => true, 'user' => [ 'email' => $email ]]);
+    }
+    send(401, ['ok' => false, 'error' => 'Invalid credentials']);
+}
+
+if ($uri === '/api/auth/logout') {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') send(405, ['ok' => false, 'error' => 'Method Not Allowed']);
+    $_SESSION = [];
+    if (ini_get('session.use_cookies')) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'] ?? '', $params['secure'] ?? false, $params['httponly'] ?? false);
+    }
+    session_destroy();
     send(200, ['ok' => true]);
 }
 
@@ -236,6 +305,8 @@ if ($uri === '/api/video/providers') {
 
 if ($uri === '/api/video/generate') {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') send(405, ['ok' => false, 'error' => 'Method Not Allowed']);
+    // Require auth for generation via backend
+    require_login_or_401();
     $body = read_json_body();
     if ($body === null) send(400, ['ok' => false, 'error' => 'Bad JSON']);
     $provider = trim((string)($body['provider'] ?? ''));
@@ -256,6 +327,8 @@ if ($uri === '/api/video/generate') {
 
 if (preg_match('#^/api/video/jobs/([^/]+)/([^/]+)$#', $uri, $m)) {
     if ($_SERVER['REQUEST_METHOD'] !== 'GET') send(405, ['ok' => false, 'error' => 'Method Not Allowed']);
+    // Require auth for job polling
+    require_login_or_401();
     $provider = $m[1];
     $id = $m[2];
     if (!in_array($provider, $ENABLED_VIDEO_PROVIDERS)) send(400, ['ok' => false, 'error' => 'Provider not enabled']);

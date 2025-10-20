@@ -11,6 +11,10 @@ const ROOT = __dirname;
 const ENABLED_VIDEO_PROVIDERS = (process.env.ENABLED_VIDEO_PROVIDERS || 'mock').split(',').map(s => s.trim()).filter(Boolean);
 const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN || process.env.VIDEO_REPLICATE_API_TOKEN || '';
 
+// Demo auth credentials
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'demo@example.com';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'demo123';
+
 const mime = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -105,6 +109,40 @@ function httpJson(method, urlString, headers = {}, body) {
 
 // In-memory mock jobs store
 const mockJobs = new Map();
+
+// In-memory sessions
+const sessions = new Map();
+
+function parseCookies(req) {
+  const header = req.headers['cookie'] || '';
+  const parts = header.split(';').map(s => s.trim()).filter(Boolean);
+  const obj = {};
+  for (const p of parts) {
+    const i = p.indexOf('=');
+    if (i > -1) obj[p.slice(0, i)] = decodeURIComponent(p.slice(i + 1));
+  }
+  return obj;
+}
+
+function getSessionUser(req) {
+  const cookies = parseCookies(req);
+  const sid = cookies.sid;
+  if (sid && sessions.has(sid)) return sessions.get(sid);
+  return null;
+}
+
+function setSession(res, user) {
+  const sid = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  sessions.set(sid, { email: user.email, login_at: new Date().toISOString() });
+  res.setHeader('Set-Cookie', `sid=${sid}; Path=/; HttpOnly; SameSite=Lax`);
+}
+
+function clearSession(req, res) {
+  const cookies = parseCookies(req);
+  const sid = cookies.sid;
+  if (sid) sessions.delete(sid);
+  res.setHeader('Set-Cookie', 'sid=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax');
+}
 
 function createMockJob(payload) {
   const id = 'mock_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
@@ -259,6 +297,32 @@ function handleContact(req, res) {
   });
 }
 
+function handleAuthMe(req, res) {
+  if (req.method !== 'GET') return send(res, 405, { ok: false, error: 'Method Not Allowed' });
+  const u = getSessionUser(req);
+  return send(res, 200, { ok: true, authenticated: !!u, user: u ? { email: u.email } : null });
+}
+
+async function handleAuthLogin(req, res) {
+  if (req.method !== 'POST') return send(res, 405, { ok: false, error: 'Method Not Allowed' });
+  const body = await parseJsonBody(req, res).catch(() => null);
+  if (!body) return;
+  const email = String(body.email || '').trim();
+  const password = String(body.password || '');
+  if (!email || !password) return send(res, 400, { ok: false, error: 'Missing email or password' });
+  if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && password === ADMIN_PASSWORD) {
+    setSession(res, { email });
+    return send(res, 200, { ok: true, user: { email } });
+  }
+  return send(res, 401, { ok: false, error: 'Invalid credentials' });
+}
+
+function handleAuthLogout(req, res) {
+  if (req.method !== 'POST') return send(res, 405, { ok: false, error: 'Method Not Allowed' });
+  clearSession(req, res);
+  return send(res, 200, { ok: true });
+}
+
 async function handleVideoProviders(req, res) {
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
@@ -284,6 +348,11 @@ async function handleVideoGenerate(req, res) {
     return res.end();
   }
   if (req.method !== 'POST') return send(res, 405, { ok: false, error: 'Method Not Allowed' });
+
+  // Require auth for generation via backend
+  const u = getSessionUser(req);
+  if (!u) return send(res, 401, { ok: false, error: 'Unauthorized', detail: 'Please login first' });
+
   const body = await parseJsonBody(req, res).catch(() => null);
   if (!body) return; // parseJsonBody already responded
 
@@ -326,6 +395,11 @@ async function handleVideoJobStatus(req, res, provider, id) {
     return res.end();
   }
   if (req.method !== 'GET') return send(res, 405, { ok: false, error: 'Method Not Allowed' });
+
+  // Require auth for job polling
+  const u = getSessionUser(req);
+  if (!u) return send(res, 401, { ok: false, error: 'Unauthorized', detail: 'Please login first' });
+
   if (!provider || !id) return send(res, 400, { ok: false, error: 'Missing provider or id' });
   if (!ENABLED_VIDEO_PROVIDERS.includes(provider)) return send(res, 400, { ok: false, error: 'Provider not enabled' });
 
@@ -362,6 +436,17 @@ const server = http.createServer((req, res) => {
   }
   if (pathname === '/healthz' || pathname === '/api/healthz' || pathname === '/api/health') {
     return send(res, 200, { ok: true });
+  }
+
+  // Auth routes
+  if (pathname === '/api/auth/me') {
+    return handleAuthMe(req, res);
+  }
+  if (pathname === '/api/auth/login') {
+    return handleAuthLogin(req, res);
+  }
+  if (pathname === '/api/auth/logout') {
+    return handleAuthLogout(req, res);
   }
 
   // Video API routes
