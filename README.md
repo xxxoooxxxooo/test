@@ -18,9 +18,12 @@ Of video 静态站点
 
 目录结构
 - index.html: 站点首页
+- index.php: PHP 入口（在仅支持 PHP 的环境下直接访问首页）
 - assets/css/styles.css: 站点样式
 - assets/js/main.js: 交互脚本（移动端菜单、手风琴、联系表单提交）
 - router.php: 极简 API 路由（/api/contact、/api/video/*、/healthz）
+- install.php: 简易安装/环境检测（可写入 config.php）
+- config.php.sample: 配置示例（复制为 config.php 使用）
 - .htaccess: Apache 重写到 router.php（仅 API 路径）
 - Dockerfile & docker-compose.yml: 容器化部署
 - install.sh: 一键安装脚本
@@ -61,6 +64,12 @@ AI 视频 API 接入
 - 将文案、链接和图片替换为你自己的品牌素材。
 - 如需接入第三方服务或企业后端，可在 main.js 中调用你的 API，或扩展 router.php。
 - 如需接更多视频供应商，可参考 router.php 中的 Replicate 适配器实现，新增对应适配器与路由分支。
+
+PHP 安装访问（无 Docker）
+- 将项目放到支持 PHP 的站点根目录。
+- 访问 /install.php 进行环境检测与可选配置（会生成 config.php）。
+- 若使用 PHP 内置服务器开发/快速启动：php -S 0.0.0.0:3000 router.php
+- 生产环境推荐 Nginx/Apache + PHP，将 /api/* 与 /healthz 转发到 router.php。
 
 部署（一键安装推荐）
 - 一键安装（Docker 优先）：
