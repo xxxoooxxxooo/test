@@ -25,7 +25,6 @@
       <a href="#" class="brand" aria-label="Of video">
         <span class="logo">O</span>
         <span class="brand-text">Of video</span>
-        <span class="brand-badge">无管理后台 · 无用户中心</span>
       </a>
 
       <nav class="site-nav" aria-label="主导航">
@@ -42,6 +41,8 @@
           <li><a href="#pricing">价格</a></li>
           <li><a href="#faq">常见问题</a></li>
           <li><a href="#contact">联系</a></li>
+          <li><a href="#login">用户中心</a></li>
+          <li><a href="#admin">管理后台</a></li>
           <li class="divider" aria-hidden="true"></li>
           <li><a class="link-muted" href="#docs">文档</a></li>
           <li><a class="link-muted" href="#blog">博客</a></li>
@@ -49,6 +50,7 @@
       </nav>
 
       <div class="header-cta">
+        <a class="btn btn-ghost" href="#login" id="login-cta">登录</a>
         <a class="btn btn-primary" href="#cta">立即体验</a>
       </div>
     </div>
@@ -284,12 +286,39 @@
       </div>
     </section>
 
+    <!-- Login -->
+    <section id="login" class="section login">
+      <div class="container">
+        <header class="section-header">
+          <h2>用户中心</h2>
+          <p>登录后即可在线使用后端接口生成 AI 视频。默认体验账号：<code>demo@example.com</code> / <code>demo123</code></p>
+        </header>
+        <form id="login-form" class="card form">
+          <div class="form-row">
+            <label>
+              <span>邮箱</span>
+              <input type="email" id="login-email" required placeholder="you@example.com" autocomplete="email" />
+            </label>
+            <label>
+              <span>密码</span>
+              <input type="password" id="login-password" required placeholder="输入密码" autocomplete="current-password" />
+            </label>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">登录</button>
+            <button type="button" class="btn btn-ghost" id="logout-btn" style="display:none;">退出登录</button>
+            <span id="login-status" class="muted" aria-live="polite"></span>
+          </div>
+        </form>
+      </div>
+    </section>
+
     <!-- Video -->
     <section id="video" class="section video">
       <div class="container">
         <header class="section-header">
           <h2>AI 视频 API 接入</h2>
-          <p>统一接入多家 AI 视频模型供应商，快速落地文生视频/图生视频能力。没有管理后台，没有用户中心。</p>
+          <p>统一接入多家 AI 视频模型供应商，快速落地文生视频/图生视频能力。</p>
         </header>
         <div class="grid">
           <form id="video-form" class="card form">
@@ -337,14 +366,40 @@
       </div>
     </section>
 
+    <!-- Admin -->
+    <section id="admin" class="section admin">
+      <div class="container">
+        <header class="section-header">
+          <h2>管理后台</h2>
+          <p class="muted">需要登录后查看数据。</p>
+        </header>
+        <div class="grid grid-3">
+          <article class="card">
+            <h3>联系表单</h3>
+            <p class="muted">最近提交</p>
+            <div id="admin-contacts" class="muted">加载中...</div>
+          </article>
+          <article class="card">
+            <h3>视频任务</h3>
+            <p class="muted">Mock 任务（演示）</p>
+            <div id="admin-jobs" class="muted">加载中...</div>
+          </article>
+          <article class="card">
+            <h3>供应商状态</h3>
+            <div id="admin-providers" class="muted">加载中...</div>
+          </article>
+        </div>
+      </div>
+    </section>
+
     <!-- CTA -->
     <section id="cta" class="section cta">
       <div class="container cta-inner">
         <h2 class="gradient">现在开始构建你的 AI 生产力</h2>
-        <p>无需注册，无管理后台、无用户中心；直接调用 API 或使用下方演示表单。</p>
+        <p>注册即可使用入门版，或联系我们获取企业方案演示。</p>
         <div class="cta-actions">
-          <a class="btn btn-primary btn-lg" href="#video">前往生成</a>
-          <a class="btn btn-ghost btn-lg" href="#contact">联系咨询</a>
+          <a class="btn btn-primary btn-lg" href="#">免费注册</a>
+          <a class="btn btn-ghost btn-lg" href="#contact">预约演示</a>
         </div>
       </div>
     </section>

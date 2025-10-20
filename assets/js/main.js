@@ -336,8 +336,8 @@
           let data = null;
           try { data = await res.json(); } catch (_) { data = null; }
           if (res.status === 401 || (data && (data.error === 'Unauthorized' || data.detail === 'Please login first'))) {
-            if (vStatus) vStatus.textContent = '后端暂时不可用，请稍后重试或使用 Replicate 直连（开发演示）';
-            // 无登录流程
+            if (vStatus) vStatus.textContent = '请先登录后再使用在线生成接口';
+            location.hash = '#login';
             return;
           }
           if (!res.ok || !data || !data.ok) {
@@ -398,4 +398,95 @@
       }
     });
   }
+
+  // 管理后台数据加载
+  const adminContacts = document.querySelector('#admin-contacts');
+  const adminJobs = document.querySelector('#admin-jobs');
+  const adminProviders = document.querySelector('#admin-providers');
+
+  function esc(s) { return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+
+  async function loadAdminData() {
+    // Providers (public)
+    if (adminProviders) {
+      try {
+        const r = await fetch('/api/video/providers');
+        const j = await r.json().catch(() => ({}));
+        const list = (j && j.providers) || [];
+        if (!list.length) adminProviders.textContent = '无可用供应商';
+        else {
+          const ul = document.createElement('ul');
+          ul.style.margin = '8px 0 0';
+          ul.style.paddingLeft = '18px';
+          for (const p of list) {
+            const li = document.createElement('li');
+            li.innerHTML = esc(p.name || p.key) + ' — ' + (p.auth === 'missing' ? '未配置' : '可用');
+            ul.appendChild(li);
+          }
+          adminProviders.innerHTML = '';
+          adminProviders.appendChild(ul);
+        }
+      } catch (_) { adminProviders.textContent = '加载失败'; }
+    }
+
+    // Contacts (auth required)
+    if (adminContacts) {
+      adminContacts.textContent = '加载中...';
+      try {
+        const r = await fetch('/api/contact');
+        const j = await r.json().catch(() => ({}));
+        if (r.status === 401) { adminContacts.textContent = '请先登录'; }
+        else if (!r.ok || !j || !j.ok) { adminContacts.textContent = '加载失败'; }
+        else {
+          const items = Array.isArray(j.items) ? j.items.slice(-10).reverse() : [];
+          if (!items.length) adminContacts.textContent = '暂无数据';
+          else {
+            const ul = document.createElement('ul');
+            ul.style.margin = '8px 0 0';
+            ul.style.paddingLeft = '18px';
+            for (const it of items) {
+              const li = document.createElement('li');
+              li.innerHTML = esc(it.name) + ' <span class="muted">(' + esc(it.email) + ')</span> — ' + esc(it.message);
+              ul.appendChild(li);
+            }
+            adminContacts.innerHTML = '';
+            adminContacts.appendChild(ul);
+          }
+        }
+      } catch (_) { adminContacts.textContent = '加载失败'; }
+    }
+
+    // Jobs (auth required)
+    if (adminJobs) {
+      adminJobs.textContent = '加载中...';
+      try {
+        const r = await fetch('/api/video/jobs');
+        const j = await r.json().catch(() => ({}));
+        if (r.status === 401) { adminJobs.textContent = '请先登录'; }
+        else if (!r.ok || !j || !j.ok) { adminJobs.textContent = '加载失败'; }
+        else {
+          const items = Array.isArray(j.jobs) ? j.jobs.slice(-10).reverse() : [];
+          if (!items.length) adminJobs.textContent = '暂无数据';
+          else {
+            const ul = document.createElement('ul');
+            ul.style.margin = '8px 0 0';
+            ul.style.paddingLeft = '18px';
+            for (const it of items) {
+              const li = document.createElement('li');
+              li.textContent = (it.id || '') + ' — ' + (it.status || '');
+              ul.appendChild(li);
+            }
+            adminJobs.innerHTML = '';
+            adminJobs.appendChild(ul);
+          }
+        }
+      } catch (_) { adminJobs.textContent = '加载失败'; }
+    }
+  }
+
+  window.addEventListener('hashchange', () => {
+    if (location.hash === '#admin') loadAdminData();
+  });
+  if (location.hash === '#admin') loadAdminData();
+
 })();
