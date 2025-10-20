@@ -4,4 +4,7 @@ return [
     'ENABLED_VIDEO_PROVIDERS' => 'mock',
     // 可选：Replicate API 访问令牌
     'REPLICATE_API_TOKEN' => '',
+    // 可选：简单登录的演示账号（未配置时默认 demo@example.com / demo123）
+    'ADMIN_EMAIL' => 'demo@example.com',
+    'ADMIN_PASSWORD' => 'demo123',
 ];

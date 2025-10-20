@@ -48,7 +48,7 @@
       </nav>
 
       <div class="header-cta">
-        <a class="btn btn-ghost" href="#login">登录</a>
+        <a class="btn btn-ghost" href="#login" id="login-cta">登录</a>
         <a class="btn btn-primary" href="#cta">立即体验</a>
       </div>
     </div>
@@ -281,6 +281,33 @@
             <div class="answer">采用订阅 + 按量计费的混合模式，按需弹性扩容，确保成本可控。</div>
           </details>
         </div>
+      </div>
+    </section>
+
+    <!-- Login -->
+    <section id="login" class="section login">
+      <div class="container">
+        <header class="section-header">
+          <h2>登录</h2>
+          <p>登录后即可在线使用后端接口生成 AI 视频。默认体验账号：<code>demo@example.com</code> / <code>demo123</code></p>
+        </header>
+        <form id="login-form" class="card form">
+          <div class="form-row">
+            <label>
+              <span>邮箱</span>
+              <input type="email" id="login-email" required placeholder="you@example.com" autocomplete="email" />
+            </label>
+            <label>
+              <span>密码</span>
+              <input type="password" id="login-password" required placeholder="输入密码" autocomplete="current-password" />
+            </label>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">登录</button>
+            <button type="button" class="btn btn-ghost" id="logout-btn" style="display:none;">退出登录</button>
+            <span id="login-status" class="muted" aria-live="polite"></span>
+          </div>
+        </form>
       </div>
     </section>
 
