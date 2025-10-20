@@ -1,0 +1,12 @@
+{
+  "name": "crevas-ai-static",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A static marketing site for an AI platform with an optional minimal Node.js API for contact form.",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}
