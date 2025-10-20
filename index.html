@@ -313,6 +313,11 @@
               <span></span>
             </div>
             <label class="full">
+              <span>(可选) Replicate API Token（仅前端直连演示用）</span>
+              <input type="password" id="replicate-token" placeholder="未启用后端 API 时，可填写 Token 浏览器直连（不建议生产）" />
+              <span class="muted" style="font-size: 12px;">提示：生产环境应通过后端代理调用第三方 API，避免在前端暴露 Token。</span>
+            </label>
+            <label class="full">
               <span>生成提示词</span>
               <textarea id="video-prompt" rows="3" placeholder="描述你想生成的视频内容... 例如：一只在宇宙中漂浮的猫，赛博朋克风格" required></textarea>
             </label>
