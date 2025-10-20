@@ -1,26 +1,26 @@
-# Simple Dockerfile to run the site with the optional Node.js API
-# Small, production-focused image
-FROM node:18-alpine AS base
+# Simple Dockerfile to run the site with PHP (Apache)
+FROM php:8.2-apache
 
-ENV NODE_ENV=production \
-    PORT=3000 \
-    HOST=0.0.0.0 \
-    ENABLED_VIDEO_PROVIDERS=mock
+# Enable Apache modules and allow .htaccess overrides
+RUN a2enmod rewrite \
+  && sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
 
-WORKDIR /app
+ENV ENABLED_VIDEO_PROVIDERS=mock \
+    APACHE_DOCUMENT_ROOT=/var/www/html
 
-# Copy only what we need (no build step required)
-COPY index.html ./
-COPY assets ./assets
-COPY server.js ./
-COPY package.json ./
+# Configure Apache DocumentRoot
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
+    && sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# No dependencies are required, but keep npm available for future use
-# (If you later add deps, uncomment the following line)
-# RUN npm ci --only=production
+WORKDIR /var/www/html
 
-EXPOSE 3000
+# Copy app files
+COPY . /var/www/html/
 
-VOLUME ["/app/data"]
+# Persist data directory
+VOLUME ["/var/www/html/data"]
 
-CMD ["node", "server.js"]
+EXPOSE 80
+
+# Apache will be the entrypoint
+CMD ["apache2-foreground"]

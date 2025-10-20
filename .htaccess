@@ -1,0 +1,11 @@
+# Route API requests to PHP router
+RewriteEngine On
+
+# Only process if router.php exists
+RewriteCond %{DOCUMENT_ROOT}/router.php -f
+
+# Send API and health checks to router
+RewriteRule ^(api/.*)$ router.php [QSA,L]
+RewriteRule ^(healthz)$ router.php [QSA,L]
+
+# Otherwise let Apache serve static files (index.html, assets, etc.)

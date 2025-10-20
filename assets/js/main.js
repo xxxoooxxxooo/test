@@ -1,4 +1,4 @@
-/* Crevas AI — 交互脚本 */
+/* Of video — 交互脚本 */
 (function () {
   const $ = (s, c = document) => c.querySelector(s);
   const $$ = (s, c = document) => Array.from(c.querySelectorAll(s));

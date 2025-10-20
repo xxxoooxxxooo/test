@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_NAME="crevas-ai"
+APP_NAME="of-video"
 DEFAULT_PORT=8080
 
 command_exists() {
@@ -28,7 +28,7 @@ print_header() {
   echo "============================================================"
 }
 
-print_header "一键安装 Crevas AI 静态站点（含可选 API）"
+print_header "一键安装 Of video 静态站点（含可选 API）"
 
 COMPOSE_CMD=""
 if command_exists docker; then
@@ -48,44 +48,34 @@ if command_exists docker; then
     exit 0
   else
     echo "未检测到 docker compose / docker-compose，尝试直接使用 Docker 运行。"
-    # Fallback: docker build + docker run
+    # Fallback: docker build + docker run (Apache on port 80)
     docker build -t ${APP_NAME}:latest .
     if docker ps --format '{{.Names}}' | grep -q "^${APP_NAME}$"; then
       docker rm -f ${APP_NAME} >/dev/null 2>&1 || true
     fi
     docker run -d --name ${APP_NAME} \
-      -e NODE_ENV=production \
-      -e PORT=3000 \
-      -e HOST=0.0.0.0 \
-      -p ${DEFAULT_PORT}:3000 \
-      -v ${APP_NAME}-data:/app/data \
+      -e ENABLED_VIDEO_PROVIDERS=${ENABLED_VIDEO_PROVIDERS:-mock} \
+      -e REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN:-} \
+      -p ${DEFAULT_PORT}:80 \
+      -v ${APP_NAME}-data:/var/www/html/data \
       ${APP_NAME}:latest
     echo "\n部署完成！访问 http://localhost:${DEFAULT_PORT}"
     exit 0
   fi
 fi
 
-# Docker 不可用时的本地运行方案（Node.js）
-if command_exists node; then
-  echo "未检测到 Docker，改为直接使用 Node.js 运行。"
-  export NODE_ENV=production
-  export PORT=3000
-  export HOST=0.0.0.0
-  if command_exists pm2; then
-    echo "检测到 PM2，使用 PM2 守护进程启动。"
-    pm2 start ecosystem.config.js --name ${APP_NAME} || pm2 restart ${APP_NAME}
-    echo "\n已通过 PM2 启动。请在服务器上配置反向代理到 http://127.0.0.1:3000"
-    echo "或直接在本机访问 http://localhost:3000"
-    exit 0
-  else
-    echo "未检测到 PM2，将直接前台启动：node server.js"
-    echo "提示：可 Ctrl+C 退出，或安装 PM2 保持常驻：npm i -g pm2"
-    node server.js
-    exit 0
-  fi
+# Docker 不可用时的本地运行方案（PHP 内置服务器）
+if command_exists php; then
+  echo "未检测到 Docker，改为直接使用 PHP 内置服务器运行。"
+  export ENABLED_VIDEO_PROVIDERS=${ENABLED_VIDEO_PROVIDERS:-mock}
+  export REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN:-}
+  echo "前台启动：php -S 0.0.0.0:3000 router.php"
+  echo "提示：可 Ctrl+C 退出；如需守护，请使用 systemd/supervisor 或自行配置 Nginx/Apache。"
+  php -S 0.0.0.0:3000 router.php
+  exit 0
 fi
 
-echo "未检测到 Docker 或 Node.js。请先安装其中之一："
+echo "未检测到 Docker 或 PHP。请先安装其中之一："
 echo "- Docker: https://docs.docker.com/get-docker/"
-echo "- Node.js (>=16): https://nodejs.org/en"
+echo "- PHP (>=8.0): https://www.php.net/downloads.php"
 exit 1
