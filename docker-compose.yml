@@ -1,0 +1,16 @@
+version: "3.8"
+services:
+  app:
+    build: .
+    container_name: of-video-app
+    environment:
+      # Enabled video providers: mock by default; add replicate if you set REPLICATE_API_TOKEN
+      - ENABLED_VIDEO_PROVIDERS=${ENABLED_VIDEO_PROVIDERS:-mock}
+      - REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN:-}
+    ports:
+      - "8080:80"
+    volumes:
+      - app-data:/var/www/html/data
+    restart: unless-stopped
+volumes:
+  app-data:
