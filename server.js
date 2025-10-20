@@ -3,7 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const url = require('url');
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
 const ROOT = __dirname;
 
 const mime = {
@@ -29,6 +30,11 @@ function send(res, code, body, headers = {}) {
   res.end(payload);
 }
 
+function getClientIp(req) {
+  const xff = (req.headers['x-forwarded-for'] || '').split(',').map(s => s.trim()).filter(Boolean);
+  return xff[0] || req.socket.remoteAddress || '';
+}
+
 function serveStatic(req, res) {
   const parsed = url.parse(req.url);
   let pathname = decodeURIComponent(parsed.pathname || '/');
@@ -43,7 +49,13 @@ function serveStatic(req, res) {
     }
     const ext = path.extname(filePath).toLowerCase();
     const type = mime[ext] || 'application/octet-stream';
-    res.writeHead(200, { 'Content-Type': type });
+
+    // For static assets (non-HTML), enable long cache; keep HTML no-cache for fresh content
+    const isHtml = ext === '.html';
+    const headers = { 'Content-Type': type };
+    if (!isHtml) headers['Cache-Control'] = 'public, max-age=31536000, immutable';
+
+    res.writeHead(200, headers);
     fs.createReadStream(filePath).pipe(res);
   });
 }
@@ -57,6 +69,10 @@ function handleContact(req, res) {
       'Access-Control-Max-Age': '86400',
     });
     return res.end();
+  }
+
+  if (req.method !== 'POST') {
+    return send(res, 405, { ok: false, error: 'Method Not Allowed' }, { 'Access-Control-Allow-Origin': '*' });
   }
 
   let raw = '';
@@ -85,7 +101,7 @@ function handleContact(req, res) {
         email,
         message,
         ts: new Date().toISOString(),
-        ip: req.socket.remoteAddress || '',
+        ip: getClientIp(req),
         ua: req.headers['user-agent'] || '',
       });
       fs.writeFileSync(file, JSON.stringify(arr, null, 2));
@@ -98,13 +114,19 @@ function handleContact(req, res) {
 }
 
 const server = http.createServer((req, res) => {
-  const parsed = url.parse(req.url);
-  if (parsed.pathname === '/api/contact') {
+  const parsed = url.parse(req.url, true);
+  const pathname = parsed.pathname || '/';
+
+  if (pathname === '/api/contact') {
     return handleContact(req, res);
   }
+  if (pathname === '/healthz' || pathname === '/api/healthz' || pathname === '/api/health') {
+    return send(res, 200, { ok: true });
+  }
+
   return serveStatic(req, res);
 });
 
-server.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`Server running at http://${HOST}:${PORT}`);
 });
