@@ -286,30 +286,52 @@
       </div>
     </section>
 
-    <!-- Login -->
+    <!-- Login / Register -->
     <section id="login" class="section login">
       <div class="container">
         <header class="section-header">
           <h2>用户中心</h2>
-          <p>登录后即可在线使用后端接口生成 AI 视频。默认体验账号：<code>demo@example.com</code> / <code>demo123</code></p>
+          <p>注册或登录后即可在线使用后端接口生成 AI 视频。默认体验账号：<code>demo@example.com</code> / <code>demo123</code></p>
         </header>
-        <form id="login-form" class="card form">
-          <div class="form-row">
-            <label>
-              <span>邮箱</span>
-              <input type="email" id="login-email" required placeholder="you@example.com" autocomplete="email" />
-            </label>
-            <label>
-              <span>密码</span>
-              <input type="password" id="login-password" required placeholder="输入密码" autocomplete="current-password" />
-            </label>
-          </div>
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary">登录</button>
-            <button type="button" class="btn btn-ghost" id="logout-btn" style="display:none;">退出登录</button>
-            <span id="login-status" class="muted" aria-live="polite"></span>
-          </div>
-        </form>
+        <div class="grid">
+          <form id="login-form" class="card form">
+            <h3 style="margin-top:0;">登录</h3>
+            <div class="form-row">
+              <label>
+                <span>邮箱</span>
+                <input type="email" id="login-email" required placeholder="you@example.com" autocomplete="email" />
+              </label>
+              <label>
+                <span>密码</span>
+                <input type="password" id="login-password" required placeholder="输入密码" autocomplete="current-password" />
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">登录</button>
+              <button type="button" class="btn btn-ghost" id="logout-btn" style="display:none;">退出登录</button>
+              <span id="login-status" class="muted" aria-live="polite"></span>
+            </div>
+          </form>
+
+          <form id="register-form" class="card form">
+            <h3 style="margin-top:0;">注册新账号</h3>
+            <div class="form-row">
+              <label>
+                <span>邮箱</span>
+                <input type="email" id="register-email" required placeholder="you@example.com" autocomplete="email" />
+              </label>
+              <label>
+                <span>密码</span>
+                <input type="password" id="register-password" required minlength="6" placeholder="至少 6 位" autocomplete="new-password" />
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-outline">注册</button>
+              <span id="register-status" class="muted" aria-live="polite"></span>
+            </div>
+            <p class="muted" style="margin:8px 0 0; font-size:12px;">提示：注册成功后将自动登录。</p>
+          </form>
+        </div>
       </div>
     </section>
 
@@ -398,7 +420,7 @@
         <h2 class="gradient">现在开始构建你的 AI 生产力</h2>
         <p>注册即可使用入门版，或联系我们获取企业方案演示。</p>
         <div class="cta-actions">
-          <a class="btn btn-primary btn-lg" href="#">免费注册</a>
+          <a class="btn btn-primary btn-lg" href="#login">免费注册</a>
           <a class="btn btn-ghost btn-lg" href="#contact">预约演示</a>
         </div>
       </div>

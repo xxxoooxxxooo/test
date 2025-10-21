@@ -157,6 +157,50 @@
     });
   }
 
+  // 注册
+  const registerForm = $('#register-form');
+  const registerStatus = $('#register-status');
+  const registerEmail = $('#register-email');
+  const registerPassword = $('#register-password');
+
+  if (registerForm) {
+    registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = registerEmail ? registerEmail.value.trim() : '';
+      const password = registerPassword ? registerPassword.value : '';
+      if (!email || !password) {
+        if (registerStatus) registerStatus.textContent = '请输入邮箱和密码';
+        return;
+      }
+      if (password.length < 6) {
+        if (registerStatus) registerStatus.textContent = '密码至少 6 位';
+        return;
+      }
+      const btn = registerForm.querySelector('button[type="submit"]');
+      if (btn) btn.disabled = true;
+      if (registerStatus) registerStatus.textContent = '正在注册...';
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+          credentials: 'same-origin',
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) throw new Error((data && data.error) || '注册失败');
+        authUser = data.user || { email };
+        if (registerStatus) registerStatus.textContent = '注册成功，已登录';
+        refreshAuthUI();
+        location.hash = '#video';
+      } catch (err) {
+        if (registerStatus) registerStatus.textContent = '注册失败：' + (err && err.message ? err.message : '');
+      } finally {
+        if (btn) btn.disabled = false;
+        setTimeout(() => { if (registerStatus) registerStatus.textContent = ''; }, 4000);
+      }
+    });
+  }
+
   // AI 视频 API 演示
   const vForm = $('#video-form');
   const vStatus = $('#video-status');

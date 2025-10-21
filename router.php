@@ -237,6 +237,52 @@ function require_login_or_401() {
     return $u;
 }
 
+// Users storage helpers (simple JSON file)
+function users_file($root) {
+    $dir = $root . '/data';
+    if (!is_dir($dir)) { @mkdir($dir, 0777, true); }
+    return $dir . '/users.json';
+}
+
+function load_users($root) {
+    $file = users_file($root);
+    if (!is_file($file)) return [];
+    $arr = json_decode(@file_get_contents($file), true);
+    return is_array($arr) ? $arr : [];
+}
+
+function save_users($root, $users) {
+    $file = users_file($root);
+    @file_put_contents($file, json_encode($users, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+    return true;
+}
+
+function find_user_by_email($users, $email) {
+    foreach ($users as $u) {
+        if (isset($u['email']) && strcasecmp($u['email'], $email) === 0) return $u;
+    }
+    return null;
+}
+
+function hash_password_sha256($salt, $password) {
+    return hash('sha256', $salt . $password);
+}
+
+function make_password_record($password) {
+    $salt = bin2hex(random_bytes(16));
+    $hash = hash_password_sha256($salt, $password);
+    return [ 'algo' => 'sha256', 'salt' => $salt, 'hash' => $hash ];
+}
+
+function verify_password_record($user, $password) {
+    if (!$user) return false;
+    if (isset($user['algo']) && $user['algo'] === 'sha256' && isset($user['salt']) && isset($user['hash'])) {
+        $calc = hash_password_sha256($user['salt'], $password);
+        return hash_equals($user['hash'], $calc);
+    }
+    return false;
+}
+
 // Handle CORS preflight for API endpoints
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     header('Access-Control-Allow-Origin: *');
@@ -276,11 +322,41 @@ if ($uri === '/api/auth/login') {
     $email = trim((string)($data['email'] ?? ''));
     $password = (string)($data['password'] ?? '');
     if ($email === '' || $password === '') send(400, ['ok' => false, 'error' => 'Missing email or password']);
+
+    // Try registered users first
+    $users = load_users($ROOT);
+    $user = find_user_by_email($users, $email);
+    if ($user && verify_password_record($user, $password)) {
+        $_SESSION['user'] = [ 'email' => $email, 'login_at' => gmdate('c') ];
+        send(200, ['ok' => true, 'user' => [ 'email' => $email ]]);
+    }
+
+    // Fallback to default admin
     if (strcasecmp($email, $GLOBALS['ADMIN_EMAIL']) === 0 && hash_equals($GLOBALS['ADMIN_PASSWORD'], $password)) {
         $_SESSION['user'] = [ 'email' => $email, 'login_at' => gmdate('c') ];
         send(200, ['ok' => true, 'user' => [ 'email' => $email ]]);
     }
     send(401, ['ok' => false, 'error' => 'Invalid credentials']);
+}
+
+if ($uri === '/api/auth/register') {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') send(405, ['ok' => false, 'error' => 'Method Not Allowed']);
+    $data = read_json_body();
+    if ($data === null) send(400, ['ok' => false, 'error' => 'Bad JSON']);
+    $email = trim((string)($data['email'] ?? ''));
+    $password = (string)($data['password'] ?? '');
+    if ($email === '' || $password === '') send(400, ['ok' => false, 'error' => 'Missing email or password']);
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) send(400, ['ok' => false, 'error' => 'Invalid email']);
+    // Prevent conflict with default admin account
+    if (strcasecmp($email, $GLOBALS['ADMIN_EMAIL']) === 0) send(409, ['ok' => false, 'error' => 'Email already exists']);
+    $users = load_users($ROOT);
+    $exist = find_user_by_email($users, $email);
+    if ($exist) send(409, ['ok' => false, 'error' => 'Email already exists']);
+    $pwd = make_password_record($password);
+    $users[] = [ 'email' => $email, 'created_at' => gmdate('c') ] + $pwd;
+    save_users($ROOT, $users);
+    $_SESSION['user'] = [ 'email' => $email, 'login_at' => gmdate('c') ];
+    send(201, ['ok' => true, 'user' => [ 'email' => $email ]]);
 }
 
 if ($uri === '/api/auth/logout') {
