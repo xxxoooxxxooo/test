@@ -1,8 +1,8 @@
 {
-  "name": "crevas-ai-static",
+  "name": "ai-video-creation-platform",
   "version": "1.0.0",
   "private": true,
-  "description": "A static marketing site for an AI platform with an optional minimal Node.js API for contact form.",
+  "description": "AI 视频创作平台示例：含用户登录与统一视频生成 API（Node/PHP 可选后端）",
   "scripts": {
     "start": "node server.js"
   },
