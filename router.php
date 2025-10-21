@@ -411,6 +411,19 @@ if ($uri === '/api/contact') {
     }
 }
 
+// Users list (admin)
+if ($uri === '/api/users') {
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') send(405, ['ok' => false, 'error' => 'Method Not Allowed']);
+    require_login_or_401();
+    $users = load_users($ROOT);
+    $items = [];
+    foreach ($users as $u) { $items[] = ['email' => $u['email'] ?? '', 'created_at' => $u['created_at'] ?? null]; }
+    $found = false;
+    foreach ($items as $it) { if (strcasecmp($it['email'], $GLOBALS['ADMIN_EMAIL']) === 0) { $found = true; break; } }
+    if (!$found) { array_unshift($items, ['email' => $GLOBALS['ADMIN_EMAIL'], 'created_at' => null, 'default' => true]); }
+    send(200, ['ok' => true, 'items' => $items]);
+}
+
 if ($uri === '/api/video/providers') {
     if ($_SERVER['REQUEST_METHOD'] !== 'GET') send(405, ['ok' => false, 'error' => 'Method Not Allowed']);
     send(200, ['ok' => true, 'providers' => list_video_providers($ENABLED_VIDEO_PROVIDERS, $REPLICATE_API_TOKEN)]);

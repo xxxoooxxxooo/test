@@ -1,7 +1,7 @@
 Of video — AI 视频创作平台
 
 概述
-- 本仓库提供一个无需构建的 AI 视频创作平台示例：包含前端页面、用户中心（登录）、以及统一的 AI 视频生成 API 接口。文案与样式为占位内容，可替换为你的品牌与素材。
+- 本仓库提供一个无需构建的 AI 视频创作平台示例：包含前端页面、用户中心（登录）、Studio 工作室（分镜/项目本地保存与批量渲染演示）、以及统一的 AI 视频生成 API 接口。文案与样式为占位内容，可替换为你的品牌与素材。
 - 默认是前端静态文件；可选地，提供了一个极简 PHP 服务（router.php）用于处理联系表单与 AI 视频 API。
 - 完整技术方案：见 docs/tech-plan-php-bt-ai-video.md（基于 PHP + 宝塔面板的多模型并行、A/B 测试、协作与脚本到视频流水线方案）。
 
@@ -21,8 +21,8 @@ Of video — AI 视频创作平台
 - index.html: 站点首页
 - index.php: PHP 入口（在仅支持 PHP 的环境下直接访问首页）
 - assets/css/styles.css: 站点样式
-- assets/js/main.js: 交互脚本（移动端菜单、手风琴、登录、联系表单与 AI 视频表单）
-- router.php: 极简 API 路由（/api/contact、/api/video/*、/healthz）
+- assets/js/main.js: 交互脚本（移动端菜单、手风琴、登录、联系表单、AI 视频表单与 Studio 工作室）
+- router.php: 极简 API 路由（/api/contact、/api/video/*、/healthz、/api/users）
 - install.php: 简易安装/环境检测（可写入 config.php）
 - config.php.sample: 配置示例（复制为 config.php 使用）
 - .htaccess: Apache 重写到 router.php（仅 API 路径）
@@ -33,6 +33,7 @@ Of video — AI 视频创作平台
 AI 视频 API 接入
 - 新增统一接口，支持对接多家 AI 视频模型供应商（默认内置一个 Mock 演示与可选的 Replicate 适配器）。
 - 前端演示入口：页面“AI 视频创作与 API”区块，可选择供应商并提交生成任务。
+- Studio 工作室：将脚本拆分为分镜（本地存储），并一键触发批量渲染（演示，走统一 API）。
 
 登录与权限
 - 支持注册与登录（基于会话 Cookie）。默认体验账号：demo@example.com / demo123；也可在页面直接注册新账号（数据保存在 data/users.json）。
@@ -52,6 +53,8 @@ AI 视频 API 接入
   - POST /api/auth/login {email,password}
   - GET /api/auth/me
   - POST /api/auth/logout
+- GET /api/users [auth]
+  - 列出平台用户（仅返回邮箱与创建时间，默认账号会标注 default）
 - GET /api/video/providers
   - 返回已启用的供应商列表及其能力/配置状态
 - POST /api/video/generate [auth]
@@ -84,8 +87,8 @@ AI 视频 API 接入
 
 自定义
 - 将文案、链接和图片替换为你自己的品牌素材。
-- 如需接入第三方服务或企业后端，可在 main.js 中调用你的 API，或扩展 router.php。
-- 如需接更多视频供应商，可参考 router.php 中的 Replicate 适配器实现，新增对应适配器与路由分支。
+- 如需接入第三方服务或企业后端，可在 main.js 中调用你的 API，或扩展 router.php / server.js。
+- 如需接更多视频供应商，可参考 router.php/server.js 中的 Replicate 适配器实现，新增对应适配器与路由分支。
 
 PHP 安装访问（无 Docker）
 - 将项目放到支持 PHP 的站点根目录。

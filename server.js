@@ -50,7 +50,7 @@ function serveStatic(req, res) {
   let pathname = decodeURIComponent(parsed.pathname || '/');
   if (pathname === '/') pathname = '/index.html';
 
-  const safePath = path.normalize(pathname).replace(/^([/\\]*\.\.[/\\])+/, '/');
+  const safePath = path.normalize(pathname).replace(/^([\/\\]*\.\.[\/\\])+/, '/');
   const filePath = path.join(ROOT, safePath);
 
   fs.stat(filePath, (err, stat) => {
@@ -374,6 +374,17 @@ function handleAuthLogout(req, res) {
   return send(res, 200, { ok: true });
 }
 
+function handleUsersList(req, res) {
+  if (req.method !== 'GET') return send(res, 405, { ok: false, error: 'Method Not Allowed' });
+  const u = getSessionUser(req);
+  if (!u) return send(res, 401, { ok: false, error: 'Unauthorized', detail: 'Please login first' });
+  const users = loadUsers();
+  const items = users.map((x) => ({ email: x.email || '', created_at: x.created_at || null }));
+  const hasDefault = items.some(it => String(it.email || '').toLowerCase() === ADMIN_EMAIL.toLowerCase());
+  if (!hasDefault) items.unshift({ email: ADMIN_EMAIL, created_at: null, default: true });
+  return send(res, 200, { ok: true, items });
+}
+
 async function handleVideoProviders(req, res) {
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
@@ -501,6 +512,11 @@ const server = http.createServer((req, res) => {
   }
   if (pathname === '/api/auth/logout') {
     return handleAuthLogout(req, res);
+  }
+
+  // Users (admin) list
+  if (pathname === '/api/users') {
+    return handleUsersList(req, res);
   }
 
   // Video API routes

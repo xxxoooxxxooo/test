@@ -38,6 +38,7 @@
           <li><a href="#features">产品</a></li>
           <li><a href="#solutions">解决方案</a></li>
           <li><a href="#video">AI 视频</a></li>
+          <li><a href="#studio">工作室</a></li>
           <li><a href="#pricing">价格</a></li>
           <li><a href="#faq">常见问题</a></li>
           <li><a href="#contact">联系</a></li>
@@ -388,6 +389,70 @@
       </div>
     </section>
 
+    <!-- Studio -->
+    <section id="studio" class="section studio">
+      <div class="container">
+        <header class="section-header">
+          <h2>工作室</h2>
+          <p>将脚本拆成分镜，保存项目并一键渲染（演示）。</p>
+        </header>
+        <div class="grid">
+          <form id="studio-form" class="card form">
+            <div class="form-row">
+              <label>
+                <span>项目名称</span>
+                <input type="text" id="studio-name" required placeholder="例如：营销短视频 A" />
+              </label>
+              <label>
+                <span>供应商</span>
+                <select id="studio-provider">
+                  <option value="" disabled selected>加载中...</option>
+                </select>
+              </label>
+            </div>
+            <div class="form-row">
+              <label>
+                <span>比例</span>
+                <select id="studio-aspect">
+                  <option value="16:9">16:9</option>
+                  <option value="9:16">9:16</option>
+                  <option value="1:1">1:1</option>
+                </select>
+              </label>
+              <label>
+                <span>风格</span>
+                <input type="text" id="studio-style" placeholder="例如：赛博朋克" />
+              </label>
+            </div>
+            <label class="full">
+              <span>脚本</span>
+              <textarea id="studio-script" rows="4" placeholder="输入脚本，每行一个场景；或手动添加分镜"></textarea>
+            </label>
+            <div class="form-actions">
+              <button type="button" class="btn btn-ghost" id="studio-split">按行拆分分镜</button>
+              <button type="button" class="btn btn-outline" id="studio-add-scene">添加分镜</button>
+              <button type="submit" class="btn btn-primary">保存项目</button>
+              <span id="studio-status" class="muted" aria-live="polite"></span>
+            </div>
+            <div id="studio-scenes" class="card" style="padding: 10px; background: transparent; border: 1px dashed var(--border);">
+              <div class="muted">分镜将在此列出。</div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-primary" id="studio-render">渲染（演示）</button>
+              <span id="studio-render-status" class="muted" aria-live="polite"></span>
+            </div>
+          </form>
+          <div class="card">
+            <h3 style="margin-top:0;">我的项目</h3>
+            <div id="projects-list" class="muted">暂无</div>
+          </div>
+        </div>
+        <div id="studio-output" class="card" style="margin-top: 16px; min-height: 80px; display: grid; align-content: center; padding: 14px;">
+          <span class="muted">渲染结果将在这里展示。</span>
+        </div>
+      </div>
+    </section>
+
     <!-- Admin -->
     <section id="admin" class="section admin">
       <div class="container">
@@ -409,6 +474,10 @@
           <article class="card">
             <h3>供应商状态</h3>
             <div id="admin-providers" class="muted">加载中...</div>
+          </article>
+          <article class="card">
+            <h3>用户列表</h3>
+            <div id="admin-users" class="muted">加载中...</div>
           </article>
         </div>
       </div>
