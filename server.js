@@ -3,6 +3,7 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
+const crypto = require('crypto');
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -143,6 +144,15 @@ function clearSession(req, res) {
   if (sid) sessions.delete(sid);
   res.setHeader('Set-Cookie', 'sid=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax');
 }
+
+// Users storage helpers (JSON file)
+const USERS_FILE = path.join(ROOT, 'data', 'users.json');
+function ensureDataDir() { fs.mkdirSync(path.join(ROOT, 'data'), { recursive: true }); }
+function loadUsers() { try { if (fs.existsSync(USERS_FILE)) { const raw = fs.readFileSync(USERS_FILE, 'utf8') || '[]'; const arr = JSON.parse(raw); return Array.isArray(arr) ? arr : []; } } catch (_) {} return []; }
+function saveUsers(users) { try { ensureDataDir(); fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2)); } catch (_) {} }
+function findUserByEmail(users, email) { const e = String(email || '').toLowerCase(); return users.find(u => String(u.email || '').toLowerCase() === e) || null; }
+function makePasswordRecord(password) { const salt = crypto.randomBytes(16).toString('hex'); const hash = crypto.createHash('sha256').update(salt + String(password)).digest('hex'); return { algo: 'sha256', salt, hash }; }
+function verifyPasswordRecord(user, password) { if (!user || !user.salt || !user.hash || user.algo !== 'sha256') return false; const calc = crypto.createHash('sha256').update(String(user.salt) + String(password)).digest('hex'); const a = Buffer.from(String(user.hash)); const b = Buffer.from(calc); if (a.length !== b.length) return false; return crypto.timingSafeEqual(a, b); }
 
 function createMockJob(payload) {
   const id = 'mock_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
@@ -321,11 +331,41 @@ async function handleAuthLogin(req, res) {
   const email = String(body.email || '').trim();
   const password = String(body.password || '');
   if (!email || !password) return send(res, 400, { ok: false, error: 'Missing email or password' });
+
+  // Try registered users first
+  const users = loadUsers();
+  const user = findUserByEmail(users, email);
+  if (user && verifyPasswordRecord(user, password)) {
+    setSession(res, { email });
+    return send(res, 200, { ok: true, user: { email } });
+  }
+
+  // Fallback to default admin
   if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && password === ADMIN_PASSWORD) {
     setSession(res, { email });
     return send(res, 200, { ok: true, user: { email } });
   }
   return send(res, 401, { ok: false, error: 'Invalid credentials' });
+}
+
+async function handleAuthRegister(req, res) {
+  if (req.method !== 'POST') return send(res, 405, { ok: false, error: 'Method Not Allowed' });
+  const body = await parseJsonBody(req, res).catch(() => null);
+  if (!body) return;
+  const email = String(body.email || '').trim();
+  const password = String(body.password || '');
+  if (!email || !password) return send(res, 400, { ok: false, error: 'Missing email or password' });
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(res, 400, { ok: false, error: 'Invalid email' });
+  if (password.length < 6) return send(res, 400, { ok: false, error: 'Password too short' });
+  if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) return send(res, 409, { ok: false, error: 'Email already exists' });
+  const users = loadUsers();
+  const exist = findUserByEmail(users, email);
+  if (exist) return send(res, 409, { ok: false, error: 'Email already exists' });
+  const rec = makePasswordRecord(password);
+  users.push({ email, created_at: new Date().toISOString(), ...rec });
+  saveUsers(users);
+  setSession(res, { email });
+  return send(res, 201, { ok: true, user: { email } });
 }
 
 function handleAuthLogout(req, res) {
@@ -455,6 +495,9 @@ const server = http.createServer((req, res) => {
   }
   if (pathname === '/api/auth/login') {
     return handleAuthLogin(req, res);
+  }
+  if (pathname === '/api/auth/register') {
+    return handleAuthRegister(req, res);
   }
   if (pathname === '/api/auth/logout') {
     return handleAuthLogout(req, res);

@@ -35,9 +35,9 @@ AI 视频 API 接入
 - 前端演示入口：页面“AI 视频创作与 API”区块，可选择供应商并提交生成任务。
 
 登录与权限
-- 默认启用简单登录（基于会话 Cookie）。默认体验账号：demo@example.com / demo123
+- 支持注册与登录（基于会话 Cookie）。默认体验账号：demo@example.com / demo123；也可在页面直接注册新账号（数据保存在 data/users.json）。
 - 登录后可调用后端在线生成接口（/api/video/generate 与 /api/video/jobs/...）。未登录将返回 401。
-- 可通过环境变量或 config.php 覆盖账号：ADMIN_EMAIL、ADMIN_PASSWORD
+- 可通过环境变量或 config.php 覆盖默认体验账号：ADMIN_EMAIL、ADMIN_PASSWORD（注册不受影响）。
 - 纯静态模式下无法使用后端接口，可在页面填写 Replicate Token 走浏览器直连（仅用于开发演示）。
 
 后端环境变量
@@ -48,6 +48,7 @@ AI 视频 API 接入
 
 接口说明（简化）
 - Auth：
+  - POST /api/auth/register {email,password}
   - POST /api/auth/login {email,password}
   - GET /api/auth/me
   - POST /api/auth/logout
