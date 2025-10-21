@@ -248,6 +248,42 @@
     }
   }
 
+  // 通用：加载供应商到指定下拉框
+  async function loadProvidersInto(selectEl) {
+    if (!selectEl) return;
+    try {
+      const res = await fetch('/api/video/providers');
+      const data = await res.json();
+      hasBackend = true;
+      const list = (data && data.providers) || [];
+      selectEl.innerHTML = '';
+      if (!list.length) {
+        const opt = document.createElement('option');
+        opt.value = 'mock';
+        opt.textContent = 'Mock Provider (演示)';
+        selectEl.appendChild(opt);
+        return;
+      }
+      for (const p of list) {
+        const opt = document.createElement('option');
+        opt.value = p.key;
+        opt.textContent = `${p.name}${p.auth === 'missing' ? '（未配置）' : ''}`;
+        selectEl.appendChild(opt);
+      }
+    } catch (e) {
+      hasBackend = false;
+      selectEl.innerHTML = '';
+      const optR = document.createElement('option');
+      optR.value = 'replicate';
+      optR.textContent = 'Replicate（直连开发模式）';
+      selectEl.appendChild(optR);
+      const opt = document.createElement('option');
+      opt.value = 'mock';
+      opt.textContent = 'Mock Provider (演示)';
+      selectEl.appendChild(opt);
+    }
+  }
+
   async function pollJob(provider, id, onUpdate) {
     for (let i = 0; i < 30; i++) {
       await new Promise(r => setTimeout(r, 1200));
@@ -443,10 +479,234 @@
     });
   }
 
+  // Studio（工作室）：本地项目 + 分镜 + 批量渲染（演示）
+  const sForm = $('#studio-form');
+  const sProvider = $('#studio-provider');
+  const sName = $('#studio-name');
+  const sAspect = $('#studio-aspect');
+  const sStyle = $('#studio-style');
+  const sScript = $('#studio-script');
+  const sSplit = $('#studio-split');
+  const sAddScene = $('#studio-add-scene');
+  const sScenes = $('#studio-scenes');
+  const sStatus = $('#studio-status');
+  const sRenderBtn = $('#studio-render');
+  const sRenderStatus = $('#studio-render-status');
+  const sOutput = $('#studio-output');
+  const projectsList = $('#projects-list');
+
+  let currentProjectId = null;
+  let scenesData = [];
+
+  function saveProjects(arr) {
+    try { localStorage.setItem('of_video_projects', JSON.stringify(arr || [])); } catch (_) {}
+  }
+  function loadProjects() {
+    try {
+      const raw = localStorage.getItem('of_video_projects') || '[]';
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    } catch (_) { return []; }
+  }
+
+  function renderScenesList() {
+    if (!sScenes) return;
+    sScenes.innerHTML = '';
+    if (!scenesData.length) {
+      const d = document.createElement('div');
+      d.className = 'muted';
+      d.textContent = '分镜将在此列出。';
+      sScenes.appendChild(d);
+      return;
+    }
+    const ul = document.createElement('div');
+    ul.style.display = 'grid';
+    ul.style.gap = '10px';
+    scenesData.forEach((sc, idx) => {
+      const row = document.createElement('div');
+      row.style.display = 'grid';
+      row.style.gridTemplateColumns = '1fr auto';
+      row.style.gap = '8px';
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.value = sc.text || '';
+      inp.placeholder = `分镜 ${idx + 1} 文案...`;
+      inp.oninput = () => { sc.text = inp.value; };
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'btn btn-ghost';
+      del.textContent = '删除';
+      del.onclick = () => {
+        scenesData = scenesData.filter(s => s !== sc);
+        renderScenesList();
+      };
+      row.appendChild(inp);
+      row.appendChild(del);
+      ul.appendChild(row);
+    });
+    sScenes.appendChild(ul);
+  }
+
+  function renderProjectsList() {
+    if (!projectsList) return;
+    const items = loadProjects();
+    projectsList.innerHTML = '';
+    if (!items.length) { projectsList.textContent = '暂无'; return; }
+    const ul = document.createElement('ul');
+    ul.style.margin = '8px 0 0';
+    ul.style.paddingLeft = '18px';
+    items.forEach((p) => {
+      const li = document.createElement('li');
+      const name = document.createElement('span');
+      name.textContent = p.name || '(未命名)';
+      const open = document.createElement('button');
+      open.type = 'button';
+      open.className = 'btn btn-outline';
+      open.style.marginLeft = '8px';
+      open.textContent = '打开';
+      open.onclick = () => {
+        currentProjectId = p.id;
+        if (sName) sName.value = p.name || '';
+        if (sAspect) sAspect.value = p.aspect || '16:9';
+        if (sStyle) sStyle.value = p.style || '';
+        scenesData = Array.isArray(p.scenes) ? p.scenes.map(s => ({ id: s.id || Math.random().toString(36).slice(2), text: s.text || '' })) : [];
+        renderScenesList();
+        location.hash = '#studio';
+      };
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'btn btn-ghost';
+      del.style.marginLeft = '6px';
+      del.textContent = '删除';
+      del.onclick = () => {
+        const arr = loadProjects().filter(x => x.id !== p.id);
+        saveProjects(arr);
+        renderProjectsList();
+      };
+      li.appendChild(name);
+      li.appendChild(open);
+      li.appendChild(del);
+      ul.appendChild(li);
+    });
+    projectsList.appendChild(ul);
+  }
+
+  if (sForm) {
+    loadProvidersInto(sProvider);
+    renderProjectsList();
+
+    sSplit && sSplit.addEventListener('click', () => {
+      const lines = (sScript && sScript.value ? sScript.value.split(/\r?\n/) : []).map(s => s.trim()).filter(Boolean);
+      const newScenes = lines.map(t => ({ id: Math.random().toString(36).slice(2), text: t }));
+      scenesData = scenesData.concat(newScenes);
+      renderScenesList();
+    });
+
+    sAddScene && sAddScene.addEventListener('click', () => {
+      scenesData.push({ id: Math.random().toString(36).slice(2), text: '' });
+      renderScenesList();
+    });
+
+    sForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = sName ? sName.value.trim() : '';
+      if (!name) {
+        if (sStatus) sStatus.textContent = '请填写项目名称';
+        return;
+      }
+      const project = {
+        id: currentProjectId || ('p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)),
+        name,
+        aspect: sAspect ? sAspect.value : '16:9',
+        style: sStyle ? sStyle.value.trim() : '',
+        scenes: scenesData.map(s => ({ id: s.id, text: s.text || '' })),
+        updated_at: new Date().toISOString(),
+      };
+      const all = loadProjects();
+      const idx = all.findIndex(x => x.id === project.id);
+      if (idx >= 0) all[idx] = project; else all.push(project);
+      saveProjects(all);
+      currentProjectId = project.id;
+      if (sStatus) sStatus.textContent = '已保存';
+      renderProjectsList();
+      setTimeout(() => { if (sStatus) sStatus.textContent = ''; }, 2000);
+    });
+
+    sRenderBtn && sRenderBtn.addEventListener('click', async () => {
+      if (!sProvider || !sOutput) return;
+      const provider = sProvider.value || 'mock';
+      if (!scenesData.length) { if (sRenderStatus) sRenderStatus.textContent = '请先添加分镜'; return; }
+      sOutput.innerHTML = '';
+      const wrap = document.createElement('div');
+      wrap.style.display = 'grid';
+      wrap.style.gap = '12px';
+      sOutput.appendChild(wrap);
+      if (sRenderStatus) sRenderStatus.textContent = '开始渲染...';
+      for (let i = 0; i < scenesData.length; i++) {
+        const sc = scenesData[i];
+        const card = document.createElement('div');
+        card.className = 'card';
+        const title = document.createElement('div');
+        title.textContent = `分镜 ${i + 1}`;
+        title.style.fontWeight = '600';
+        title.style.marginBottom = '6px';
+        const status = document.createElement('div');
+        status.className = 'muted';
+        status.textContent = '创建任务...';
+        const resultBox = document.createElement('div');
+        card.appendChild(title);
+        card.appendChild(status);
+        card.appendChild(resultBox);
+        wrap.appendChild(card);
+        try {
+          const prompt = `${(sStyle && sStyle.value ? sStyle.value + '风格，' : '')}${sc.text || ''}`.trim();
+          const payload = provider === 'replicate'
+            ? { provider, input: { prompt, aspect_ratio: sAspect ? sAspect.value : '16:9' } }
+            : { provider, prompt, options: { aspect_ratio: sAspect ? sAspect.value : '16:9' } };
+          const res = await fetch('/api/video/generate', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.status === 401) {
+            status.textContent = '未登录：请先登录后再渲染';
+            location.hash = '#login';
+            break;
+          }
+          if (!res.ok || !data || !data.ok) {
+            status.textContent = '创建任务失败';
+            const pre = document.createElement('pre'); pre.style.whiteSpace = 'pre-wrap'; pre.textContent = JSON.stringify(data, null, 2);
+            resultBox.appendChild(pre);
+            continue;
+          }
+          status.textContent = '生成中...';
+          const result = await pollJob(provider, data.id, (d) => { status.textContent = `状态：${d.status}`; });
+          if (!result) { status.textContent = '超时或失败'; continue; }
+          if (result.status === 'failed') { status.textContent = '失败'; const pre = document.createElement('pre'); pre.textContent = JSON.stringify(result, null, 2); resultBox.appendChild(pre); continue; }
+          status.textContent = '完成';
+          const out = result.output || (result.raw && result.raw.output) || null;
+          if (out && typeof out === 'string' && /https?:\/\//.test(out) && /(mp4|webm)(\?|$)/.test(out)) {
+            const video = document.createElement('video'); video.controls = true; video.src = out; video.style.maxWidth = '100%'; resultBox.appendChild(video);
+          } else if (Array.isArray(out)) {
+            const firstUrl = out.find(u => typeof u === 'string' && /(mp4|webm)(\?|$)/.test(u));
+            if (firstUrl) { const video = document.createElement('video'); video.controls = true; video.src = firstUrl; video.style.maxWidth = '100%'; resultBox.appendChild(video); }
+            else { const pre = document.createElement('pre'); pre.textContent = JSON.stringify(result, null, 2); resultBox.appendChild(pre); }
+          } else {
+            const pre = document.createElement('pre'); pre.textContent = JSON.stringify(result, null, 2); resultBox.appendChild(pre);
+          }
+        } catch (err) {
+          status.textContent = '错误：' + (err && err.message ? err.message : '');
+        }
+      }
+      if (sRenderStatus) sRenderStatus.textContent = '渲染完成';
+      setTimeout(() => { if (sRenderStatus) sRenderStatus.textContent = ''; }, 4000);
+    });
+  }
+
   // 管理后台数据加载
   const adminContacts = document.querySelector('#admin-contacts');
   const adminJobs = document.querySelector('#admin-jobs');
   const adminProviders = document.querySelector('#admin-providers');
+  const adminUsers = document.querySelector('#admin-users');
 
   function esc(s) { return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
 
@@ -525,6 +785,33 @@
           }
         }
       } catch (_) { adminJobs.textContent = '加载失败'; }
+    }
+
+    // Users (auth required)
+    if (adminUsers) {
+      adminUsers.textContent = '加载中...';
+      try {
+        const r = await fetch('/api/users');
+        const j = await r.json().catch(() => ({}));
+        if (r.status === 401) { adminUsers.textContent = '请先登录'; }
+        else if (!r.ok || !j || !j.ok) { adminUsers.textContent = '加载失败'; }
+        else {
+          const items = Array.isArray(j.items) ? j.items : [];
+          if (!items.length) adminUsers.textContent = '暂无用户';
+          else {
+            const ul = document.createElement('ul');
+            ul.style.margin = '8px 0 0';
+            ul.style.paddingLeft = '18px';
+            for (const it of items) {
+              const li = document.createElement('li');
+              li.innerHTML = esc(it.email) + (it.default ? ' <span class="muted">(默认账号)</span>' : '') + (it.created_at ? ' — <span class="muted">' + esc(it.created_at) + '</span>' : '');
+              ul.appendChild(li);
+            }
+            adminUsers.innerHTML = '';
+            adminUsers.appendChild(ul);
+          }
+        }
+      } catch (_) { adminUsers.textContent = '加载失败'; }
     }
   }
 
